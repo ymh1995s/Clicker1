@@ -242,9 +242,9 @@ TextureImporter:
       rect:
         serializedVersion: 2
         x: 178
-        y: 32
+        y: 118
         width: 114
-        height: 174
+        height: 88
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -268,7 +268,7 @@ TextureImporter:
         width: 93
         height: 86
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -277,6 +277,28 @@ TextureImporter:
       bones: []
       spriteID: 981aa382ddf8af046989e5517355e4ad
       internalID: -2082947663
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Characters1_1
+      rect:
+        serializedVersion: 2
+        x: 178
+        y: 31
+        width: 95
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 09d86965cfaf9864f92f002e9715e6b5
+      internalID: 1061582142
       vertices: []
       indices: 
       edges: []
@@ -296,6 +318,7 @@ TextureImporter:
       entries: []
     nameFileIdTable:
       Characters1_0: -2082947663
+      Characters1_1: 1061582142
       Generated Image October 23, 2025 - 9_24AM_preview_rev_1_0: -334163734831377658
       Generated Image October 23, 2025 - 9_24AM_preview_rev_1_1: -5066485320711184125
       Generated Image October 23, 2025 - 9_24AM_preview_rev_1_2: 2687369543843646253

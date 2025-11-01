@@ -145,7 +145,7 @@ TextureImporter:
         width: 100
         height: 91
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -163,11 +163,11 @@ TextureImporter:
       rect:
         serializedVersion: 2
         x: 36
-        y: 32
+        y: 205
         width: 98
-        height: 261
+        height: 88
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -189,7 +189,7 @@ TextureImporter:
         width: 100
         height: 90
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -211,7 +211,7 @@ TextureImporter:
         width: 115
         height: 87
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -233,7 +233,7 @@ TextureImporter:
         width: 91
         height: 91
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -253,9 +253,9 @@ TextureImporter:
         x: 310
         y: 32
         width: 118
-        height: 260
+        height: 87
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -272,12 +272,12 @@ TextureImporter:
       name: Generated Image October 23, 2025 - 9_34AM_preview_rev_1_6
       rect:
         serializedVersion: 2
-        x: 430
+        x: 449
         y: 32
-        width: 117
-        height: 352
+        width: 98
+        height: 85
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -295,11 +295,11 @@ TextureImporter:
       rect:
         serializedVersion: 2
         x: 165
-        y: 32
+        y: 117
         width: 102
-        height: 173
+        height: 88
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -313,23 +313,111 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Generated Image October 23, 2025 - 9_34AM_preview_rev_1_8
+      name: Characters2_0
       rect:
         serializedVersion: 2
-        x: 537
-        y: 173
-        width: 19
-        height: 23
+        x: 36
+        y: 119
+        width: 98
+        height: 86
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: b03a98fbd69baa4e0800000000000000
-      internalID: -1969558006005128437
+      spriteID: 6c1840e3d9a171342aec6a1c259cebd4
+      internalID: -134984829
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Characters2_1
+      rect:
+        serializedVersion: 2
+        x: 36
+        y: 33
+        width: 101
+        height: 86
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 6b76baa426d23e94180a4df9029d66f5
+      internalID: -1128019223
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Characters2_2
+      rect:
+        serializedVersion: 2
+        x: 172
+        y: 31
+        width: 95
+        height: 86
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 99366ba3a7c59fb499dc0b23ef917f0d
+      internalID: 1886031068
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Characters2_3
+      rect:
+        serializedVersion: 2
+        x: 451
+        y: 118
+        width: 105
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ae425a15d8628df448a6746540e3827f
+      internalID: 1763510015
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Characters2_4
+      rect:
+        serializedVersion: 2
+        x: 447
+        y: 206
+        width: 100
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: a6deb0bace748404391f7763de30a648
+      internalID: 318177548
       vertices: []
       indices: 
       edges: []
@@ -338,7 +426,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 2892d07c4e25d7340b98dca575ed13e8
     internalID: 0
     vertices: []
     indices: 
@@ -348,6 +436,11 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
+      Characters2_0: -134984829
+      Characters2_1: -1128019223
+      Characters2_2: 1886031068
+      Characters2_3: 1763510015
+      Characters2_4: 318177548
       Generated Image October 23, 2025 - 9_34AM_preview_rev_1_0: 9047620320768225744
       Generated Image October 23, 2025 - 9_34AM_preview_rev_1_1: 8967726619481756044
       Generated Image October 23, 2025 - 9_34AM_preview_rev_1_2: 5525565462260527901
