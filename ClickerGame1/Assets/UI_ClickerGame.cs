@@ -4,7 +4,7 @@
 using System;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.UI; 
 using TMPro;
 // Summary:
 // This is the UI_ClickerGame class, implemented as a subclass of UI_Base. It manages the UI interactions
