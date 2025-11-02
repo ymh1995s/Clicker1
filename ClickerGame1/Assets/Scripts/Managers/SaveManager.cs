@@ -21,6 +21,13 @@ public class SaveManager : Singleton<SaveManager>
     }
 
     [Serializable]
+    private class PurchasedEntry
+    {
+        public string key;
+        public bool purchased;
+    }
+
+    [Serializable]
     private class SaveData
     {
         public int gold;
@@ -28,6 +35,7 @@ public class SaveManager : Singleton<SaveManager>
         public int goldPerSecond;
         public List<UpgradeEntry> gpcUpgrades = new List<UpgradeEntry>();
         public List<UpgradeEntry> gpsUpgrades = new List<UpgradeEntry>();
+        public List<PurchasedEntry> purchasedGpcItems = new List<PurchasedEntry>();
     }
 
     // Awake is not overridden because base Singleton may not expose a virtual Awake
@@ -78,6 +86,16 @@ public class SaveManager : Singleton<SaveManager>
                     foreach (var kv in GameManager.Instance.GPSUpgrades)
                     {
                         data.gpsUpgrades.Add(new UpgradeEntry { key = kv.Key.ToString(), level = kv.Value });
+                    }
+                }
+                catch { }
+
+                // Purchased one-time GPC items
+                try
+                {
+                    foreach (var kv in GameManager.Instance.PurchasedGPCItems)
+                    {
+                        data.purchasedGpcItems.Add(new PurchasedEntry { key = kv.Key.ToString(), purchased = kv.Value });
                     }
                 }
                 catch { }
@@ -146,6 +164,26 @@ public class SaveManager : Singleton<SaveManager>
                         if (Enum.TryParse(typeof(EGPSUpgradeType), e.key, out var parsed))
                         {
                             GameManager.Instance.GPSUpgrades[(EGPSUpgradeType)parsed] = e.level;
+                        }
+                    }
+                }
+                catch { }
+
+                // Apply purchased one-time GPC items
+                try
+                {
+                    // Ensure all keys exist with default false to avoid KeyNotFound
+                    GameManager.Instance.PurchasedGPCItems.Clear();
+                    foreach (EGPCUpgradeType t in Enum.GetValues(typeof(EGPCUpgradeType)))
+                    {
+                        GameManager.Instance.PurchasedGPCItems[t] = false;
+                    }
+
+                    foreach (var p in data.purchasedGpcItems)
+                    {
+                        if (Enum.TryParse(typeof(EGPCUpgradeType), p.key, out var parsed))
+                        {
+                            GameManager.Instance.PurchasedGPCItems[(EGPCUpgradeType)parsed] = p.purchased;
                         }
                     }
                 }
