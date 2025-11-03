@@ -48,7 +48,11 @@ public class UI_Upgrade : UI_Base
     {
         base.RefreshUI();
         // The upgrade button should only be interactable if the corresponding item has been purchased
-        bool purchased = GameManager.Instance.PurchasedGPCItems[_gpcUpgradeType];
+        bool purchased = false;
+        if (GameManager.Instance != null && GameManager.Instance.PurchasedGPCItems != null)
+        {
+            GameManager.Instance.PurchasedGPCItems.TryGetValue(_gpcUpgradeType, out purchased);
+        }
         _clickButton.interactable = purchased;
 
         var colors = _clickButton.colors;
@@ -67,33 +71,31 @@ public class UI_Upgrade : UI_Base
 
     private void IncreaseGPC()
     {
-        int upgradeLevel = GameManager.Instance.GPCUpgrades[_gpcUpgradeType];
-        int increaseAmount = 0;
+        if (GameManager.Instance == null) return;
 
-        switch (_gpcUpgradeType)
+        // Ensure the GPCUpgrades dictionary has an entry for this tier
+        if (!GameManager.Instance.GPCUpgrades.ContainsKey(_gpcUpgradeType))
         {
-            case EGPCUpgradeType.A:
-                increaseAmount = upgradeLevel * 10;
-                break;
-            case EGPCUpgradeType.B:
-                increaseAmount = upgradeLevel * 20;
-                break;
-            case EGPCUpgradeType.C:
-                increaseAmount = upgradeLevel * 30;
-                break;
-            case EGPCUpgradeType.D:
-                increaseAmount = upgradeLevel * 40;
-                break;
-            case EGPCUpgradeType.E:
-                increaseAmount = upgradeLevel * 50;
-                break;
-            case EGPCUpgradeType.F:
-                increaseAmount = upgradeLevel * 60;
-                break;
+            GameManager.Instance.GPCUpgrades[_gpcUpgradeType] = 1; // default stored level
         }
 
-        GameManager.Instance.GoldPerClick += increaseAmount;
-        GameManager.Instance.GPCUpgrades[_gpcUpgradeType]++;
+        int upgradeLevel = GameManager.Instance.GPCUpgrades[_gpcUpgradeType];
+
+        // Increment stored level (represents number of purchases + 1 initial)
+        GameManager.Instance.GPCUpgrades[_gpcUpgradeType] = upgradeLevel + 1;
+
+        // Remember previous displayed GPC to enforce minimum visual change
+        int previousGpc = GameManager.Instance.GoldPerClick;
+
+        // Recalculate total GoldPerClick using UpgradeSystem_Test formula
+        GameManager.Instance.RecalculateGoldPerClick();
+
+        // Enforce minimum visual increase of 1 if recalculation didn't change integer value
+        if (GameManager.Instance.GoldPerClick <= previousGpc)
+        {
+            GameManager.Instance.GoldPerClick = previousGpc + 1;
+        }
+
         RefreshUI();
     }
 }
