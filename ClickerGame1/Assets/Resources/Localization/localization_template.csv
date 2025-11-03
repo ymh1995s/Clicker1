@@ -1,0 +1,11 @@
+﻿Key,Korean,English,Japanese,Chinese
+GAME_TITLE,클리커 게임,Clicker Game,クリックゲ?ム,点?放置游?
+UI.Gold,골드,Gold,ゴ?ルド,金?
+UI.GoldFormat,{0} 골드,{0} Gold,{0} ゴ?ルド,{0} 金?
+UI.GPC,클릭당 획득,Gold per Click,クリックあたりの獲得,每次点??得的金?
+UI.GPS,초당 획득,Gold per Second,秒ごとの獲得,每秒?得的金?
+UI.BestGold,최고 골드,Best Gold,最高ゴ?ルド,最高金?
+UI.Level,레벨,Level,レベル,等?
+UI.Clicks,클릭 수,Clicks,クリック?,点?次?
+BUTTON.Buy,구매,Buy,購入,??
+TOOLTIP.UpgradeLevel,업그레이드 레벨,Upgrade Level,アップグレ?ドレベル,升?等?
