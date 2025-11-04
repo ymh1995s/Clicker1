@@ -31,7 +31,8 @@ public class GameManager : Singleton<GameManager>
     public event Action OnGoldChanged;
 
     // Gold per click (GPC)
-    [SerializeField] private int _goldPerClick = 1;
+    // Default GPC set to 10 to match UpgradeSystem_Test initial assumptions
+    [SerializeField] private int _goldPerClick = 10;
     public int GoldPerClick
     {
         get => _goldPerClick;
@@ -107,19 +108,90 @@ public class GameManager : Singleton<GameManager>
         return new List<KeyValuePair<EGPCUpgradeType, bool>>(_purchasedGPCItems);
     }
 
-    // --- New: Growth parameters from UpgradeSystem_Test ---
-    // GPC tiers: BaseGain and GainRate (index order = Tier1..Tier6)
-    private readonly double[] _gpcBaseGains = { 0.1, 1.0, 10.0, 50.0, 200.0, 1000.0 };
-    private readonly double[] _gpcGainRates = { 1.10, 1.12, 1.15, 1.17, 1.18, 1.20 };
+    // Item buy costs (matches UpgradeSystem_Test itemBuyCost for tiers 1..6)
+    private readonly int[] _itemBuyCosts = { 1000, 5000, 25000, 100000, 500000, 2000000 };
+    public int GetItemBuyCost(EGPCUpgradeType tier)
+    {
+        int idx = (int)tier; // Tier1 -> 0
+        if (idx < 0 || idx >= _itemBuyCosts.Length) return 0;
+        return _itemBuyCosts[idx];
+    }
 
-    // GPS tiers: BaseGain and GainRate (index order = Tier1..Tier6)
-    private readonly double[] _gpsBaseGains = { 0.05, 0.5, 3.0, 15.0, 80.0, 400.0 };
-    private readonly double[] _gpsGainRates = { 1.09, 1.11, 1.13, 1.15, 1.17, 1.18 };
+    // --- Growth parameters taken from UpgradeSystem_Test (mapped to 0-based arrays) ---
+    // base incremental GPC added per purchase for each tier
+    private readonly double[] _baseGPCInc = { 1.0, 5.0, 25.0, 120.0, 600.0, 3000.0 };
+    // linear growth factor per additional level used in DeltaGPC = base * (1 + L * growth)
+    private readonly double[] _gpcLevelGrowth = { 0.02, 0.03, 0.04, 0.05, 0.06, 0.08 };
 
-    // Recalculate GoldPerClick from GPC upgrade levels using UpgradeSystem_Test formula
+    // base incremental GPS added per purchase
+    private readonly double[] _baseGPSInc = { 1.0, 2.0, 10.0, 40.0, 200.0, 1000.0 };
+    private readonly double[] _gpsLevelGrowth = { 0.02, 0.03, 0.04, 0.05, 0.06, 0.08 };
+
+    // base click value to preserve initial GPC (UpgradeSystem_Test uses 10 as starting GPC)
+    private const double _baseClickValue = 10.0;
+
+    // Item unlock multiplier when purchased via UI_ItemBuy
+    private const double ITEM_UNLOCK_BONUS = 1.15;
+
+    // --- Cooldown per tier (based on UpgradeSystem_Test)
+    private readonly int[] _baseCooldownPerTier = { 5, 10, 20, 40, 80, 160 };
+    private readonly int[] _cooldownIncreasePerTier = { 1, 2, 3, 5, 10, 20 };
+
+    // Next available time per GPC tier (seconds, Time.time)
+    private readonly Dictionary<EGPCUpgradeType, double> _tierNextAvailableTime = new Dictionary<EGPCUpgradeType, double>();
+
+    // Ensure dictionary has entries
+    private void EnsureTierCooldownsInitialized()
+    {
+        foreach (EGPCUpgradeType t in Enum.GetValues(typeof(EGPCUpgradeType)))
+        {
+            if (!_tierNextAvailableTime.ContainsKey(t))
+                _tierNextAvailableTime[t] = 0.0;
+        }
+    }
+
+    // Returns cooldown duration in seconds for given tier using stored level
+    public int GetCooldownForTier(EGPCUpgradeType tier)
+    {
+        EnsureTierCooldownsInitialized();
+        int idx = (int)tier; // Tier1 -> 0
+        int storedLevel = 1;
+        if (_gpcUpgrades.TryGetValue(tier, out var lv)) storedLevel = lv;
+        int purchases = Math.Max(0, storedLevel - 1);
+        int baseCd = (idx >= 0 && idx < _baseCooldownPerTier.Length) ? _baseCooldownPerTier[idx] : 0;
+        int inc = (idx >= 0 && idx < _cooldownIncreasePerTier.Length) ? _cooldownIncreasePerTier[idx] : 0;
+        return baseCd + inc * purchases;
+    }
+
+    // Returns whether tier is currently available (not on cooldown)
+    public bool IsTierAvailable(EGPCUpgradeType tier)
+    {
+        EnsureTierCooldownsInitialized();
+        if (!_tierNextAvailableTime.TryGetValue(tier, out var t)) return true;
+        return Time.time >= t;
+    }
+
+    // Use cooldown for tier now: sets next available time to Time.time + cooldown
+    public void UseTierCooldown(EGPCUpgradeType tier)
+    {
+        EnsureTierCooldownsInitialized();
+        int cd = GetCooldownForTier(tier);
+        _tierNextAvailableTime[tier] = Time.time + cd;
+    }
+
+    // Optional: get remaining cooldown seconds (0 if available)
+    public float GetRemainingCooldown(EGPCUpgradeType tier)
+    {
+        EnsureTierCooldownsInitialized();
+        if (!_tierNextAvailableTime.TryGetValue(tier, out var t)) return 0f;
+        double rem = t - Time.time;
+        return (float)Math.Max(0.0, rem);
+    }
+
+    // Recalculate GoldPerClick using linear-per-level increment formula from UpgradeSystem_Test
     public void RecalculateGoldPerClick()
     {
-        double total = 1.0; // base click value
+        double total = _baseClickValue; // start with base click value (e.g. 10)
 
         var enumValues = Enum.GetValues(typeof(EGPCUpgradeType));
         for (int i = 0; i < enumValues.Length; i++)
@@ -128,64 +200,119 @@ public class GameManager : Singleton<GameManager>
             int storedLevel = 1;
             if (_gpcUpgrades.TryGetValue(key, out var val)) storedLevel = val;
 
-            // Mapping: storedLevel == 1 => zero purchases (UpgradeTier.Level == 0)
             int purchases = Math.Max(0, storedLevel - 1);
 
-            // Sum gains added on each purchase. In UpgradeSystem_Test, on each Upgrade() the tier's Level increments
-            // and the game adds BaseGain * GainRate^(Level) where Level starts at 1 for first purchase.
-            // We replicate that by summing k=1..purchases of BaseGain * GainRate^k
-            double baseGain = (i < _gpcBaseGains.Length) ? _gpcBaseGains[i] : 0.0;
-            double gainRate = (i < _gpcGainRates.Length) ? _gpcGainRates[i] : 1.0;
+            double baseInc = (i < _baseGPCInc.Length) ? _baseGPCInc[i] : 0.0;
+            double growth = (i < _gpcLevelGrowth.Length) ? _gpcLevelGrowth[i] : 0.0;
 
-            for (int k = 1; k <= purchases; k++)
+            // apply unlock multiplier if the one-time item was bought for this tier
+            double unlockMult = 1.0;
+            if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(key, out var bought) && bought)
+                unlockMult = ITEM_UNLOCK_BONUS;
+
+            // Sum over previous purchases: for k = 0..purchases-1, add base * (1 + k * growth) * unlockMult;
+            for (int k = 0; k < purchases; k++)
             {
-                total += baseGain * Math.Pow(gainRate, k);
+                total += baseInc * (1.0 + k * growth) * unlockMult;
             }
         }
 
-        // Use ceiling so small fractional increases are visible immediately
         GoldPerClick = (int)Math.Ceiling(total);
     }
 
-    // Recalculate GoldPerSecond from GPS upgrade levels using UpgradeSystem_Test formula
+    // Recalculate GoldPerSecond using the same linear-per-level formula
     public void RecalculateGoldPerSecond()
     {
-        double total = 0.0; // base GPS is 0
+        double total = 0.0;
 
-        var enumValues = Enum.GetValues(typeof(EGPSUpgradeType));
+        // Use GPC upgrade purchases to determine GPS increases so that GPC upgrades
+        // also contribute to GoldPerSecond (matches UpgradeSystem_Test behavior)
+        var enumValues = Enum.GetValues(typeof(EGPCUpgradeType));
         for (int i = 0; i < enumValues.Length; i++)
         {
-            var key = (EGPSUpgradeType)i;
+            var key = (EGPCUpgradeType)i;
             int storedLevel = 1;
-            if (_gpsUpgrades.TryGetValue(key, out var val)) storedLevel = val;
+            if (_gpcUpgrades.TryGetValue(key, out var val)) storedLevel = val;
 
             int purchases = Math.Max(0, storedLevel - 1);
-            double baseGain = (i < _gpsBaseGains.Length) ? _gpsBaseGains[i] : 0.0;
-            double gainRate = (i < _gpsGainRates.Length) ? _gpsGainRates[i] : 1.0;
 
-            for (int k = 1; k <= purchases; k++)
+            double baseInc = (i < _baseGPSInc.Length) ? _baseGPSInc[i] : 0.0;
+            double growth = (i < _gpsLevelGrowth.Length) ? _gpsLevelGrowth[i] : 0.0;
+
+            double unlockMult = 1.0;
+            if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(key, out var bought) && bought)
+                unlockMult = ITEM_UNLOCK_BONUS;
+
+            for (int k = 0; k < purchases; k++)
             {
-                total += baseGain * Math.Pow(gainRate, k);
+                total += baseInc * (1.0 + k * growth) * unlockMult;
             }
         }
 
-        // Use ceiling for visibility of small gains
         GoldPerSecond = (int)Math.Ceiling(total);
+    }
+
+    // Upgrade cost data (matches UpgradeSystem_Test baseCost and costMultiplier, 0-based for Tier1..Tier6)
+    private readonly double[] _upgradeBaseCost = { 100.0, 500.0, 2500.0, 12500.0, 60000.0, 300000.0 };
+    private readonly double[] _upgradeCostMultiplier = { 1.15, 1.17, 1.20, 1.22, 1.25, 1.30 };
+
+    // Get current stored level for tier (storedLevel mapping: 1 => zero purchases)
+    public int GetStoredGpcLevel(EGPCUpgradeType tier)
+    {
+        if (_gpcUpgrades.TryGetValue(tier, out var val)) return val;
+        return 1;
+    }
+
+    // Get cost for next upgrade of given tier
+    public long GetUpgradeCost(EGPCUpgradeType tier)
+    {
+        int idx = (int)tier; // Tier1 -> 0
+        int storedLevel = GetStoredGpcLevel(tier);
+        int purchases = Math.Max(0, storedLevel - 1); // purchases already made
+        double baseCost = (idx >= 0 && idx < _upgradeBaseCost.Length) ? _upgradeBaseCost[idx] : 0.0;
+        double mult = (idx >= 0 && idx < _upgradeCostMultiplier.Length) ? _upgradeCostMultiplier[idx] : 1.0;
+        double cost = baseCost * Math.Pow(mult, purchases);
+        return (long)Math.Floor(cost);
+    }
+
+    // Attempt to perform an upgrade: check cooldown, cost, deduct gold, increment stored level, recalc stats, set cooldown
+    public bool AttemptUpgrade(EGPCUpgradeType tier)
+    {
+        // check availability
+        if (!IsTierAvailable(tier)) return false;
+        long cost = GetUpgradeCost(tier);
+        if (Gold < cost) return false;
+
+        // Deduct gold
+        Gold -= (int)cost;
+
+        // Increment stored level (storedLevel starts at 1)
+        if (!_gpcUpgrades.ContainsKey(tier)) _gpcUpgrades[tier] = 1;
+        _gpcUpgrades[tier] = _gpcUpgrades[tier] + 1;
+
+        // Recalculate GPC/GPS
+        RecalculateGoldPerClick();
+        RecalculateGoldPerSecond();
+
+        // Apply gameplay cooldown
+        UseTierCooldown(tier);
+
+        return true;
     }
 
     // Virtual Unity event methods
     protected virtual void Awake()
     {
-        // Ensure GPC starts at least at 1 at runtime (inspector could have 0)
-        GoldPerClick = Math.Max(1, _goldPerClick);
+        // Recalculate from any loaded upgrade levels to ensure GoldPerClick/GPS start from formula
+        RecalculateGoldPerClick();
+        RecalculateGoldPerSecond();
+
+        // Ensure GPC starts at least at base click runtime (fallback)
+        GoldPerClick = Math.Max((int)_baseClickValue, GoldPerClick);
 
         // Initialize other properties so any subscribers receive the initial values
         Gold = _gold;
-        GoldPerSecond = _goldPerSecond;
-
-        // Recalculate from any loaded upgrade levels
-        RecalculateGoldPerClick();
-        RecalculateGoldPerSecond();
+        // GoldPerSecond already set by Recalculate
     }
 
     protected virtual void Start()

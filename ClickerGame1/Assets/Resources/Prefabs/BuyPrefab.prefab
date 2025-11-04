@@ -66,10 +66,10 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_Sprite: {fileID: 4332946239522709459, guid: 27f849be4924a6243a0f7945c8fccba7, type: 3}
-  m_Type: 0
+  m_Type: 3
   m_PreserveAspect: 0
   m_FillCenter: 1
-  m_FillMethod: 4
+  m_FillMethod: 0
   m_FillAmount: 1
   m_FillClockwise: 1
   m_FillOrigin: 0
@@ -759,8 +759,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c0e88b175a52ba443a4af6414da90a28, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UI_Upgrade
-  _clickButton: {fileID: 0}
+  _clickButton: {fileID: 2238881401251149569}
   _gpcUpgradeType: 0
+  _blurImage: {fileID: 8603753291299309303}
+  _rechargeDuration: 3
 --- !u!1 &8504653106111173018
 GameObject:
   m_ObjectHideFlags: 0

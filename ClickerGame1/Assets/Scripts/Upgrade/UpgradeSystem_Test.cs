@@ -1,140 +1,177 @@
-// ======================================
-// Clicker Upgrade System (1-hour cycle version)
-// ======================================
 using System;
-using System.Collections.Generic;
+using UnityEngine;
 
-namespace UpgradeSystemSample
+// UpgradeSystem_Test: simulation helper for upgrade formulas and simple auto-buy strategy.
+// Converted from top-level script into a MonoBehaviour so it compiles in Unity.
+public class UpgradeSystem_Test : MonoBehaviour
 {
-    public class ClickerGame
+    // === 상수 ===
+    private const long TARGET_GOLD = 10_000_000L;
+    private const int PLAY_TIME_SEC = 1800; // 30 min
+    private const double CLICK_PER_SEC = 4.0; // 가정: 초당 4 클릭
+
+    // 티어 수
+    private const int TIERS = 6;
+
+    // 하드코드 배열(1-based 사용 편의상 index 0 더미)
+    private readonly long[] baseCost = { 0, 100, 500, 2500, 12500, 60000, 300000 };
+    private readonly double[] costMultiplier = { 0, 1.15, 1.17, 1.20, 1.22, 1.25, 1.30 };
+    private readonly long[] baseGPCInc = { 0, 1, 5, 25, 120, 600, 3000 };
+    private readonly long[] baseGPSInc = { 0, 1, 2, 10, 40, 200, 1000 };
+    private readonly double[] growthFactorTier = { 0, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08 };
+    private readonly double[] unlockMultiplier = { 0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 }; // UI_ItemBuy로 1.15로 바뀔 수 있음
+    private readonly int[] baseCooldown = { 0, 5, 10, 20, 40, 80, 160 };
+    private readonly int[] cooldownIncrease = { 0, 1, 2, 3, 5, 10, 20 };
+
+    // UI_ItemBuy 비용 (tier 1..6 매칭)
+    private readonly long[] itemBuyCost = { 1000, 5000, 25000, 100000, 500000, 2000000 };
+    private const double ITEM_UNLOCK_BONUS = 1.15; // 구매 시 해당 티어 효과에 곱해지는 보너스
+
+    // === 게임 상태 ===
+    private long gold = 0;
+    private double accumulatedTime = 0.0;
+
+    private long GPC = 10; // 클릭당 골드 (초기값)
+    private long GPS = 0;  // 초당 자동 골드 (초기값)
+
+    // 티어별 레벨, 마지막 구매 시각(쿨다운 체크), 언락(아이템 구매)
+    private int[] tierLevel = new int[TIERS + 1]; // 0..6
+    private double[] tierCooldownEnd = new double[TIERS + 1]; // 게임 시간으로 비교
+    private bool[] tierUnlocked = new bool[TIERS + 1]; // UI_ItemBuy를 통해 언락
+    private bool[] itemBought = new bool[TIERS + 1]; // 1회 구매(아이템)
+
+    private void Awake()
     {
-        public double Gold = 0;
-        public double GPC = 1;   // Gold Per Click (초기 1골드)
-        public double GPS = 0;   // Gold Per Second (초기 0골드)
-        public double PlayTime = 0; // 분 단위 플레이 시간
-
-        // GPC/GPS 업그레이드 티어별 정보
-        private List<UpgradeTier> GpcTiers;
-        private List<UpgradeTier> GpsTiers;
-
-        public ClickerGame()
+        // Initialize arrays
+        for (int i = 0; i <= TIERS; i++)
         {
-            // 티어 구성: 기본비용, 증가율, 기본효과, 성장률
-            GpcTiers = new List<UpgradeTier>()
-        {
-            new UpgradeTier("GPC T1", 10, 1.15, 0.1, 1.10),
-            new UpgradeTier("GPC T2", 1_000, 1.18, 1, 1.12),
-            new UpgradeTier("GPC T3", 100_000, 1.22, 10, 1.15),
-            new UpgradeTier("GPC T4", 1_000_000, 1.25, 50, 1.17),
-            new UpgradeTier("GPC T5", 10_000_000, 1.28, 200, 1.18),
-            new UpgradeTier("GPC T6", 100_000_000, 1.30, 1_000, 1.20)
-        };
-
-            GpsTiers = new List<UpgradeTier>()
-        {
-            new UpgradeTier("GPS T1", 50, 1.14, 0.05, 1.09),
-            new UpgradeTier("GPS T2", 5_000, 1.17, 0.5, 1.11),
-            new UpgradeTier("GPS T3", 500_000, 1.20, 3, 1.13),
-            new UpgradeTier("GPS T4", 2_000_000, 1.23, 15, 1.15),
-            new UpgradeTier("GPS T5", 20_000_000, 1.26, 80, 1.17),
-            new UpgradeTier("GPS T6", 100_000_000, 1.30, 400, 1.18)
-        };
-        }
-
-        public void Update(double deltaTime)
-        {
-            // 초당 골드 증가
-            Gold += GPS * deltaTime;
-
-            // 1분 = 60초
-            PlayTime += deltaTime / 60.0;
-        }
-
-        public void Click()
-        {
-            Gold += GPC;
-        }
-
-        public void TryUpgrade(bool isClickUpgrade)
-        {
-            var tiers = isClickUpgrade ? GpcTiers : GpsTiers;
-
-            foreach (var tier in tiers)
-            {
-                double cost = tier.GetCurrentCost();
-                if (Gold >= cost)
-                {
-                    Gold -= cost;
-                    tier.Upgrade();
-                    if (isClickUpgrade)
-                        GPC += tier.GetCurrentGain();
-                    else
-                        GPS += tier.GetCurrentGain();
-                    break;
-                }
-            }
-        }
-
-        public void Simulate(double totalSeconds)
-        {
-            double time = 0;
-            double upgradeTimer = 0;
-            double upgradeInterval = 180; // 초단위, 초반 3분에 1회 업그레이드
-
-            while (time < totalSeconds)
-            {
-                Update(1.0);
-                time += 1.0;
-                upgradeTimer += 1.0;
-
-                // 업그레이드 주기 증가 (점점 느려짐)
-                if (upgradeTimer >= upgradeInterval)
-                {
-                    upgradeTimer = 0;
-                    // 클릭/자동 골드 업그레이드 번갈아 수행
-                    bool upgradeClick = (time % 600 < 300);
-                    TryUpgrade(upgradeClick);
-
-                    // 플레이 시간이 길어질수록 업그레이드 주기 증가
-                    upgradeInterval *= 1.10; // 10%씩 길어짐
-                    upgradeInterval = Math.Min(upgradeInterval, 900); // 최대 15분 간격 제한
-                }
-            }
+            tierLevel[i] = 0;
+            tierCooldownEnd[i] = 0.0;
+            tierUnlocked[i] = false;
+            itemBought[i] = false;
         }
     }
 
-    public class UpgradeTier
+    // === 헬퍼 함수 ===
+    private long Cost(int t, int L)
     {
-        public string Name;
-        public double BaseCost;
-        public double CostRate;
-        public double BaseGain;
-        public double GainRate;
-        public int Level = 0;
-
-        public UpgradeTier(string name, double baseCost, double costRate, double baseGain, double gainRate)
-        {
-            Name = name;
-            BaseCost = baseCost;
-            CostRate = costRate;
-            BaseGain = baseGain;
-            GainRate = gainRate;
-        }
-
-        public double GetCurrentCost()
-        {
-            return BaseCost * Math.Pow(CostRate, Level);
-        }
-
-        public double GetCurrentGain()
-        {
-            return BaseGain * Math.Pow(GainRate, Level);
-        }
-
-        public void Upgrade()
-        {
-            Level++;
-        }
+        double c = baseCost[t] * Math.Pow(costMultiplier[t], L);
+        return (long)Math.Floor(c);
+    }
+    private long DeltaGPC(int t, int L)
+    {
+        double d = baseGPCInc[t] * (1.0 + L * growthFactorTier[t]);
+        // apply unlock multiplier from array (note: array is readonly reference but contents mutable)
+        d *= unlockMultiplier[t];
+        return (long)Math.Floor(d);
+    }
+    private long DeltaGPS(int t, int L)
+    {
+        double d = baseGPSInc[t] * (1.0 + L * growthFactorTier[t]);
+        d *= unlockMultiplier[t];
+        long val = (long)Math.Floor(d);
+        return Math.Max(1, val); // 최소 1 보장
+    }
+    private int CooldownNext(int t, int L)
+    {
+        return baseCooldown[t] + cooldownIncrease[t] * L;
     }
 
+    // === 아이템 구매(언락) ===
+    public bool BuyItemUnlock(int tierIndex, double gameTime)
+    {
+        if (tierIndex < 1 || tierIndex > TIERS) return false;
+        if (itemBought[tierIndex]) return false;
+        long cost = itemBuyCost[tierIndex - 1]; // 매칭: itemBuyCost[0] -> tier 1
+        if (gold < cost) return false;
+        gold -= cost;
+        itemBought[tierIndex] = true;
+        tierUnlocked[tierIndex] = true;
+        // unlockMultiplier is readonly reference, but we can update its element by copying to a mutable array
+        // However unlockMultiplier was declared readonly; to change, create a small mutable copy array field instead.
+        // For simplicity, adjust behavior by marking tierUnlocked and using ITEM_UNLOCK_BONUS in calculations if itemBought.
+        return true;
+    }
+
+    // === 업그레이드 시도 ===
+    public bool TryUpgradeTier(int t, double gameTime)
+    {
+        if (t < 1 || t > TIERS) return false;
+        if (!tierUnlocked[t]) return false; // 언락 필요
+        int L = tierLevel[t];
+        if (gameTime < tierCooldownEnd[t]) return false; // 쿨타임 중
+        long cost = Cost(t, L);
+        if (gold < cost) return false;
+
+        // 구매 실행
+        gold -= cost;
+        // if itemBought, apply ITEM_UNLOCK_BONUS when computing delta
+        double multiplier = itemBought[t] ? ITEM_UNLOCK_BONUS : 1.0;
+        long dGPC = (long)Math.Floor(baseGPCInc[t] * (1.0 + L * growthFactorTier[t]) * multiplier);
+        long dGPS = (long)Math.Floor(baseGPSInc[t] * (1.0 + L * growthFactorTier[t]) * multiplier);
+        dGPS = Math.Max(1, dGPS);
+
+        GPC += dGPC;
+        GPS += dGPS;
+
+        // 레벨 증가, 쿨타임 설정
+        tierLevel[t] = L + 1;
+        int cd = CooldownNext(t, L);
+        tierCooldownEnd[t] = gameTime + cd;
+        return true;
+    }
+
+    // === 간단 자동 구매 전략(가장 싸고 가능한 것부터) ===
+    private void AutoBuyStrategy(double gameTime)
+    {
+        // 1) 먼저 언락 가능한 아이템 체크
+        for (int t = 1; t <= TIERS; t++)
+        {
+            if (!tierUnlocked[t] && !itemBought[t])
+            {
+                long cost = itemBuyCost[t - 1];
+                if (gold >= cost) { BuyItemUnlock(t, gameTime); return; }
+            }
+        }
+        // 2) 가능한 업그레이드 중 최저 비용 우선
+        long bestCost = long.MaxValue;
+        int bestTier = -1;
+        for (int t = 1; t <= TIERS; t++)
+        {
+            if (!tierUnlocked[t]) continue;
+            int L = tierLevel[t];
+            if (gameTime < tierCooldownEnd[t]) continue;
+            long c = Cost(t, L);
+            if (c <= gold && c < bestCost)
+            {
+                bestCost = c; bestTier = t;
+            }
+        }
+        if (bestTier != -1) TryUpgradeTier(bestTier, gameTime);
+    }
+
+    // === 게임 루프(초 단위 시뮬레이트 예시) ===
+    public void Simulate()
+    {
+        double gameTime = 0.0;
+        double dt = 1.0; // 1초 단위로 업데이트 (원하면 더 세분화 가능)
+        for (int sec = 0; sec < PLAY_TIME_SEC; sec++)
+        {
+            // 1) 클릭 수입 (플레이어가 매초 CLICK_PER_SEC 만큼 클릭한다고 가정)
+            double clickIncomeThisSec = GPC * CLICK_PER_SEC;
+            // 2) 자동 수입
+            double autoIncomeThisSec = GPS;
+            // 합산(정수화)
+            long income = (long)Math.Floor(clickIncomeThisSec + autoIncomeThisSec);
+            gold += income;
+
+            // 3) 자동 구매(간단 전략)
+            AutoBuyStrategy(gameTime);
+
+            // 4) 시간 증가
+            gameTime += dt;
+        }
+        // 시뮬 끝: 결과 출력
+        Debug.Log($"시뮬레이션 종료 시간 {PLAY_TIME_SEC}s, 골드 = {gold}");
+    }
 }

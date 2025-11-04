@@ -24,6 +24,19 @@ public class UI_ItemBuy : UI_Base
 
         if (_clickButton == null)
             Debug.LogWarning($"[UI_ItemBuy] ClickButton not found for {gameObject.name}. Button clicks won't work.", this);
+
+        // If GameManager exists, initialize price from its item cost table
+        if (GameManager.Instance != null)
+        {
+            try
+            {
+                _price = GameManager.Instance.GetItemBuyCost(_gpcUpgradeType);
+            }
+            catch (Exception)
+            {
+                // keep default if any error
+            }
+        }
     }
 
     // Use MonoBehaviour OnEnable (do not override) to rebind when enabled
@@ -61,6 +74,12 @@ public class UI_ItemBuy : UI_Base
         if (GameManager.Instance != null && GameManager.Instance.PurchasedGPCItems != null)
             purchased = GameManager.Instance.PurchasedGPCItems[_gpcUpgradeType];
 
+        // Ensure price reflects GameManager's configured price
+        if (GameManager.Instance != null)
+        {
+            _price = GameManager.Instance.GetItemBuyCost(_gpcUpgradeType);
+        }
+
         // Disable and gray out if already purchased
         _clickButton.interactable = !purchased;
         var colors = _clickButton.colors;
@@ -84,16 +103,23 @@ public class UI_ItemBuy : UI_Base
         if (GameManager.Instance.PurchasedGPCItems[_gpcUpgradeType])
             return;
 
+        // Use authoritative price from GameManager
+        int priceToUse = GameManager.Instance.GetItemBuyCost(_gpcUpgradeType);
+
         // Check if enough gold
-        if (GameManager.Instance.Gold < _price)
+        if (GameManager.Instance.Gold < priceToUse)
         {
             // Not enough gold - could play feedback here
             return;
         }
 
         // Deduct gold and mark purchased
-        GameManager.Instance.Gold -= _price;
+        GameManager.Instance.Gold -= priceToUse;
         GameManager.Instance.PurchasedGPCItems[_gpcUpgradeType] = true;
+
+        // Recalculate derived stats so purchase unlocks apply (GPC and GPS)
+        GameManager.Instance.RecalculateGoldPerClick();
+        GameManager.Instance.RecalculateGoldPerSecond();
 
         // Instead of directly increasing GPC here, enable the corresponding UI_Upgrade button
         var upgrades = FindObjectsOfType<UI_Upgrade>();
