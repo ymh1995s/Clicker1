@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,6 +9,10 @@ public class UI_ItemBuy : UI_Base
     [SerializeField] private Button _clickButton;
     [SerializeField] private EGPCUpgradeType _gpcUpgradeType;
     [SerializeField] private int _price = 100; // default price
+
+    // New: Need money UI under this buy button
+    [SerializeField] private GameObject _needMoneyImage;
+    [SerializeField] private TMP_Text _needMoneyText;
 
     protected override void Awake()
     {
@@ -24,6 +28,26 @@ public class UI_ItemBuy : UI_Base
 
         if (_clickButton == null)
             Debug.LogWarning($"[UI_ItemBuy] ClickButton not found for {gameObject.name}. Button clicks won't work.", this);
+
+        // Try to find NeedMoneyImage and its Text child if not assigned
+        if (_needMoneyImage == null)
+        {
+            var needGo = FindChildGameObject("NeedMoneyImage");
+            if (needGo != null)
+                _needMoneyImage = needGo;
+        }
+
+        if (_needMoneyText == null && _needMoneyImage != null)
+        {
+            var textTransform = _needMoneyImage.transform.Find("Text");
+            if (textTransform != null)
+                _needMoneyText = textTransform.GetComponent<TMP_Text>();
+            if (_needMoneyText == null)
+                _needMoneyText = _needMoneyImage.GetComponentInChildren<TMP_Text>(true);
+        }
+
+        if (_needMoneyImage != null)
+            _needMoneyImage.SetActive(false);
 
         // If GameManager exists, initialize price from its item cost table
         if (GameManager.Instance != null)
@@ -45,6 +69,16 @@ public class UI_ItemBuy : UI_Base
         // Re-bind in case the button was assigned later or re-enabled
         BindUIEvents();
         RefreshUI();
+
+        // Subscribe to gold changes so NeedMoneyImage updates immediately when player gains/loses gold
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnGoldChanged += RefreshUI;
+    }
+
+    void OnDisable()
+    {
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnGoldChanged -= RefreshUI;
     }
 
     protected override void Start()
@@ -80,6 +114,21 @@ public class UI_ItemBuy : UI_Base
             _price = GameManager.Instance.GetItemBuyCost(_gpcUpgradeType);
         }
 
+        // Show NeedMoneyImage if player doesn't have enough gold for this item
+        if (_needMoneyImage != null)
+        {
+            bool hasEnough = true;
+            if (GameManager.Instance != null)
+                hasEnough = GameManager.Instance.Gold >= _price;
+
+            _needMoneyImage.SetActive(!hasEnough && !purchased);
+
+            if (!hasEnough && _needMoneyText != null)
+            {
+                _needMoneyText.text = $"{_price:N0} 골드 필요";
+            }
+        }
+
         // Disable and gray out if already purchased
         _clickButton.interactable = !purchased;
         var colors = _clickButton.colors;
@@ -113,13 +162,20 @@ public class UI_ItemBuy : UI_Base
             return;
         }
 
-        // Deduct gold and mark purchased
-        GameManager.Instance.Gold -= priceToUse;
+        // To avoid UI flicker where OnGoldChanged triggers subscribers before GPC/GPS
+        // recalculation can occur, update purchase state and recalculate first, then
+        // deduct gold so listeners receive the recalculated GPC/GPS together with the
+        // updated gold value.
+
+        // Mark purchased (one-time unlock)
         GameManager.Instance.PurchasedGPCItems[_gpcUpgradeType] = true;
 
-        // Recalculate derived stats so purchase unlocks apply (GPC and GPS)
+        // Recalculate derived stats so purchase unlocks apply (GPC and GPS) BEFORE changing gold
         GameManager.Instance.RecalculateGoldPerClick();
         GameManager.Instance.RecalculateGoldPerSecond();
+
+        // Now deduct gold (this will invoke OnGoldChanged after recalculations)
+        GameManager.Instance.Gold -= priceToUse;
 
         // Instead of directly increasing GPC here, enable the corresponding UI_Upgrade button
         var upgrades = FindObjectsOfType<UI_Upgrade>();

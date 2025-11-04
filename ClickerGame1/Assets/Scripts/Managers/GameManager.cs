@@ -1,4 +1,4 @@
-// 2025-11-01 AI-Tag
+﻿// 2025-11-01 AI-Tag
 // This was created with the help of Assistant, a Unity Artificial Intelligence product.
 
 using System;
@@ -298,6 +298,133 @@ public class GameManager : Singleton<GameManager>
         UseTierCooldown(tier);
 
         return true;
+    }
+
+    // Public helpers to compute the increase (delta) for the next purchase of a given tier
+    public long GetNextGpcIncrease(EGPCUpgradeType tier)
+    {
+        int idx = (int)tier;
+        int storedLevel = GetStoredGpcLevel(tier);
+        int purchases = Math.Max(0, storedLevel - 1);
+
+        double baseInc = (idx >= 0 && idx < _baseGPCInc.Length) ? _baseGPCInc[idx] : 0.0;
+        double growth = (idx >= 0 && idx < _gpcLevelGrowth.Length) ? _gpcLevelGrowth[idx] : 0.0;
+
+        double unlockMult = 1.0;
+        if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(tier, out var bought) && bought)
+            unlockMult = ITEM_UNLOCK_BONUS;
+
+        double delta = baseInc * (1.0 + purchases * growth) * unlockMult;
+        return (long)Math.Ceiling(delta);
+    }
+
+    public long GetNextGpsIncrease(EGPCUpgradeType tier)
+    {
+        int idx = (int)tier;
+        int storedLevel = GetStoredGpcLevel(tier);
+        int purchases = Math.Max(0, storedLevel - 1);
+
+        double baseInc = (idx >= 0 && idx < _baseGPSInc.Length) ? _baseGPSInc[idx] : 0.0;
+        double growth = (idx >= 0 && idx < _gpsLevelGrowth.Length) ? _gpsLevelGrowth[idx] : 0.0;
+
+        double unlockMult = 1.0;
+        if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(tier, out var bought) && bought)
+            unlockMult = ITEM_UNLOCK_BONUS;
+
+        double delta = baseInc * (1.0 + purchases * growth) * unlockMult;
+        return (long)Math.Ceiling(delta);
+    }
+
+    // Projected increase in integer GoldPerClick when purchasing the next upgrade for given tier.
+    // This accounts for the way GoldPerClick is computed (ceil of total), returning the actual
+    // integer delta that will be observed after RecalculateGoldPerClick() runs.
+    public int GetProjectedGpcIncrease(EGPCUpgradeType tier)
+    {
+        // compute exact total before
+        double totalBefore = _baseClickValue;
+        var enumValues = Enum.GetValues(typeof(EGPCUpgradeType));
+        for (int i = 0; i < enumValues.Length; i++)
+        {
+            var key = (EGPCUpgradeType)i;
+            int storedLevel = 1;
+            if (_gpcUpgrades.TryGetValue(key, out var val)) storedLevel = val;
+
+            int purchases = Math.Max(0, storedLevel - 1);
+
+            double baseInc = (i < _baseGPCInc.Length) ? _baseGPCInc[i] : 0.0;
+            double growth = (i < _gpcLevelGrowth.Length) ? _gpcLevelGrowth[i] : 0.0;
+
+            double unlockMult = 1.0;
+            if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(key, out var bought) && bought)
+                unlockMult = ITEM_UNLOCK_BONUS;
+
+            for (int k = 0; k < purchases; k++)
+            {
+                totalBefore += baseInc * (1.0 + k * growth) * unlockMult;
+            }
+        }
+
+        // compute the delta for the specific tier (next purchase)
+        int idxTier = (int)tier;
+        int stored = GetStoredGpcLevel(tier);
+        int purchasesTier = Math.Max(0, stored - 1);
+        double baseIncTier = (idxTier >= 0 && idxTier < _baseGPCInc.Length) ? _baseGPCInc[idxTier] : 0.0;
+        double growthTier = (idxTier >= 0 && idxTier < _gpcLevelGrowth.Length) ? _gpcLevelGrowth[idxTier] : 0.0;
+        double unlockMultTier = 1.0;
+        if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(tier, out var boughtTier) && boughtTier)
+            unlockMultTier = ITEM_UNLOCK_BONUS;
+
+        double deltaExact = baseIncTier * (1.0 + purchasesTier * growthTier) * unlockMultTier;
+
+        double totalAfter = totalBefore + deltaExact;
+
+        int beforeInt = (int)Math.Ceiling(totalBefore);
+        int afterInt = (int)Math.Ceiling(totalAfter);
+        return Math.Max(0, afterInt - beforeInt);
+    }
+
+    public int GetProjectedGpsIncrease(EGPCUpgradeType tier)
+    {
+        // compute exact total before for GPS
+        double totalBefore = 0.0;
+        var enumValues = Enum.GetValues(typeof(EGPCUpgradeType));
+        for (int i = 0; i < enumValues.Length; i++)
+        {
+            var key = (EGPCUpgradeType)i;
+            int storedLevel = 1;
+            if (_gpcUpgrades.TryGetValue(key, out var val)) storedLevel = val;
+
+            int purchases = Math.Max(0, storedLevel - 1);
+
+            double baseInc = (i < _baseGPSInc.Length) ? _baseGPSInc[i] : 0.0;
+            double growth = (i < _gpsLevelGrowth.Length) ? _gpsLevelGrowth[i] : 0.0;
+
+            double unlockMult = 1.0;
+            if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(key, out var bought) && bought)
+                unlockMult = ITEM_UNLOCK_BONUS;
+
+            for (int k = 0; k < purchases; k++)
+            {
+                totalBefore += baseInc * (1.0 + k * growth) * unlockMult;
+            }
+        }
+
+        int idxTier = (int)tier;
+        int stored = GetStoredGpcLevel(tier);
+        int purchasesTier = Math.Max(0, stored - 1);
+        double baseIncTier = (idxTier >= 0 && idxTier < _baseGPSInc.Length) ? _baseGPSInc[idxTier] : 0.0;
+        double growthTier = (idxTier >= 0 && idxTier < _gpsLevelGrowth.Length) ? _gpsLevelGrowth[idxTier] : 0.0;
+        double unlockMultTier = 1.0;
+        if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(tier, out var boughtTier) && boughtTier)
+            unlockMultTier = ITEM_UNLOCK_BONUS;
+
+        double deltaExact = baseIncTier * (1.0 + purchasesTier * growthTier) * unlockMultTier;
+
+        double totalAfter = totalBefore + deltaExact;
+
+        int beforeInt = (int)Math.Ceiling(totalBefore);
+        int afterInt = (int)Math.Ceiling(totalAfter);
+        return Math.Max(0, afterInt - beforeInt);
     }
 
     // Virtual Unity event methods

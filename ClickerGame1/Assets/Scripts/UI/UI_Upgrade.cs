@@ -1,4 +1,4 @@
-// 2025-11-01 AI-Tag
+﻿// 2025-11-01 AI-Tag
 // This was created with the help of Assistant, a Unity Artificial Intelligence product.
 
 using System;
@@ -38,6 +38,14 @@ public class UI_Upgrade : UI_Base
     // Show next upgrade cost as string so it is visible in the Unity Inspector during play
     [SerializeField] private string _editorNextUpgradeCost;
 
+    // New: UI to show when player lacks enough gold for the next upgrade
+    [SerializeField] private GameObject _needMoneyImage;
+    [SerializeField] private TMP_Text _needMoneyText;
+
+    // New: Text fields under ClickButton to show this-upgrade deltas
+    [SerializeField] private TMP_Text _gpcStatText;
+    [SerializeField] private TMP_Text _gpsStatText;
+
     protected override void Awake()
     {
         base.Awake();
@@ -61,6 +69,41 @@ public class UI_Upgrade : UI_Base
         // Ensure blur image starts inactive in play
         if (_blurImage != null)
             _blurImage.gameObject.SetActive(false);
+
+        // Try to find NeedMoneyImage and its Text child if not assigned
+        if (_needMoneyImage == null)
+        {
+            var needGo = FindChildGameObject("NeedMoneyImage");
+            if (needGo != null)
+                _needMoneyImage = needGo;
+        }
+
+        if (_needMoneyText == null && _needMoneyImage != null)
+        {
+            // Prefer a TextMeshPro child named "Text", otherwise fallback to any TMP_Text in children
+            var textTransform = _needMoneyImage.transform.Find("Text");
+            if (textTransform != null)
+                _needMoneyText = textTransform.GetComponent<TMP_Text>();
+            if (_needMoneyText == null)
+                _needMoneyText = _needMoneyImage.GetComponentInChildren<TMP_Text>(true);
+        }
+
+        // Try to find GPCStat / GPSStat under this UI (usually under ClickButton)
+        if (_gpcStatText == null)
+        {
+            var gpcGo = FindChildGameObject("GPCStat");
+            if (gpcGo != null)
+                _gpcStatText = gpcGo.GetComponent<TMP_Text>();
+        }
+        if (_gpsStatText == null)
+        {
+            var gpsGo = FindChildGameObject("GPSStat");
+            if (gpsGo != null)
+                _gpsStatText = gpsGo.GetComponent<TMP_Text>();
+        }
+
+        if (_needMoneyImage != null)
+            _needMoneyImage.SetActive(false);
     }
 
     protected override void Start()
@@ -68,6 +111,31 @@ public class UI_Upgrade : UI_Base
         base.Start();
         BindUIEvents();
         RefreshUI();
+    }
+
+    void OnEnable()
+    {
+        // Subscribe to gold changes so NeedMoneyImage updates immediately when player gains/loses gold
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnGoldChanged += RefreshUI;
+
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnGoldPerClickChanged += RefreshUI;
+            GameManager.Instance.OnGoldPerSecondChanged += RefreshUI;
+        }
+    }
+
+    void OnDisable()
+    {
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnGoldChanged -= RefreshUI;
+
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnGoldPerClickChanged -= RefreshUI;
+            GameManager.Instance.OnGoldPerSecondChanged -= RefreshUI;
+        }
     }
 
     protected override void BindUIEvents()
@@ -114,11 +182,47 @@ public class UI_Upgrade : UI_Base
             {
                 long cost = GameManager.Instance.GetUpgradeCost(_gpcUpgradeType);
                 _editorNextUpgradeCost = cost.ToString();
+
+                // Show NeedMoneyImage when player doesn't have enough gold for this upgrade
+                bool hasEnough = GameManager.Instance.Gold >= cost;
+                if (_needMoneyImage != null)
+                    _needMoneyImage.SetActive(!hasEnough);
+
+                if (!hasEnough && _needMoneyText != null)
+                {
+                    // Format: "### 골드 필요"
+                    _needMoneyText.text = $"{cost:N0} 골드 필요";
+                }
+
+                // Update stat delta texts for this upgrade
+                if (_gpcStatText != null)
+                {
+                    int deltaGpc = GameManager.Instance.GetProjectedGpcIncrease(_gpcUpgradeType);
+                    _gpcStatText.text = $"+{deltaGpc:N0}";
+                }
+                if (_gpsStatText != null)
+                {
+                    int deltaGps = GameManager.Instance.GetProjectedGpsIncrease(_gpcUpgradeType);
+                    _gpsStatText.text = $"+{deltaGps:N0}";
+                }
             }
             catch (Exception)
             {
                 _editorNextUpgradeCost = "N/A";
+                if (_needMoneyImage != null)
+                    _needMoneyImage.SetActive(false);
+
+                if (_gpcStatText != null) _gpcStatText.text = "";
+                if (_gpsStatText != null) _gpsStatText.text = "";
             }
+        }
+        else
+        {
+            if (_needMoneyImage != null)
+                _needMoneyImage.SetActive(false);
+
+            if (_gpcStatText != null) _gpcStatText.text = "";
+            if (_gpsStatText != null) _gpsStatText.text = "";
         }
     }
 
