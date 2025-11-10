@@ -1,44 +1,45 @@
 using System;
 using UnityEngine;
+// TODO 11-10 ì´ ìŠ¤í¬ë¦½íŠ¸ëŠ” ìºë¦­í„° íŠ¹ì„±ê¹Œì§€ ê³ ë ¤í•˜ì—¬ ì™„ì „íˆ ì¬í¸ì„± ë˜ì–´ì•¼í•¨.
 
 // UpgradeSystem_Test: simulation helper for upgrade formulas and simple auto-buy strategy.
 // Converted from top-level script into a MonoBehaviour so it compiles in Unity.
 public class UpgradeSystem_Test : MonoBehaviour
 {
-    // === »ó¼ö ===
+    // === ìƒìˆ˜ ===
     private const long TARGET_GOLD = 10_000_000L;
     private const int PLAY_TIME_SEC = 1800; // 30 min
-    private const double CLICK_PER_SEC = 4.0; // °¡Á¤: ÃÊ´ç 4 Å¬¸¯
+    private const double CLICK_PER_SEC = 4.0; // ê°€ì •: ì´ˆë‹¹ 4 í´ë¦­
 
-    // Æ¼¾î ¼ö
+    // í‹°ì–´ ìˆ˜
     private const int TIERS = 6;
 
-    // ÇÏµåÄÚµå ¹è¿­(1-based »ç¿ë ÆíÀÇ»ó index 0 ´õ¹Ì)
+    // í•˜ë“œì½”ë“œ ë°°ì—´(1-based ì‚¬ìš© í¸ì˜ìƒ index 0 ë”ë¯¸)
     private readonly long[] baseCost = { 0, 100, 500, 2500, 12500, 60000, 300000 };
     private readonly double[] costMultiplier = { 0, 1.15, 1.17, 1.20, 1.22, 1.25, 1.30 };
     private readonly long[] baseGPCInc = { 0, 1, 5, 25, 120, 600, 3000 };
     private readonly long[] baseGPSInc = { 0, 1, 2, 10, 40, 200, 1000 };
     private readonly double[] growthFactorTier = { 0, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08 };
-    private readonly double[] unlockMultiplier = { 0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 }; // UI_ItemBuy·Î 1.15·Î ¹Ù²ğ ¼ö ÀÖÀ½
+    private readonly double[] unlockMultiplier = { 0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 }; // UI_ItemBuyë¡œ 1.15ë¡œ ë°”ë€” ìˆ˜ ìˆìŒ
     private readonly int[] baseCooldown = { 0, 5, 10, 20, 40, 80, 160 };
     private readonly int[] cooldownIncrease = { 0, 1, 2, 3, 5, 10, 20 };
 
-    // UI_ItemBuy ºñ¿ë (tier 1..6 ¸ÅÄª)
+    // UI_ItemBuy ë¹„ìš© (tier 1..6 ë§¤ì¹­)
     private readonly long[] itemBuyCost = { 1000, 5000, 25000, 100000, 500000, 2000000 };
-    private const double ITEM_UNLOCK_BONUS = 1.15; // ±¸¸Å ½Ã ÇØ´ç Æ¼¾î È¿°ú¿¡ °öÇØÁö´Â º¸³Ê½º
+    private const double ITEM_UNLOCK_BONUS = 1.15; // êµ¬ë§¤ ì‹œ í•´ë‹¹ í‹°ì–´ íš¨ê³¼ì— ê³±í•´ì§€ëŠ” ë³´ë„ˆìŠ¤
 
-    // === °ÔÀÓ »óÅÂ ===
+    // === ê²Œì„ ìƒíƒœ ===
     private long gold = 0;
     private double accumulatedTime = 0.0;
 
-    private long GPC = 10; // Å¬¸¯´ç °ñµå (ÃÊ±â°ª)
-    private long GPS = 0;  // ÃÊ´ç ÀÚµ¿ °ñµå (ÃÊ±â°ª)
+    private long GPC = 10; // í´ë¦­ë‹¹ ê³¨ë“œ (ì´ˆê¸°ê°’)
+    private long GPS = 0;  // ì´ˆë‹¹ ìë™ ê³¨ë“œ (ì´ˆê¸°ê°’)
 
-    // Æ¼¾îº° ·¹º§, ¸¶Áö¸· ±¸¸Å ½Ã°¢(Äğ´Ù¿î Ã¼Å©), ¾ğ¶ô(¾ÆÀÌÅÛ ±¸¸Å)
+    // í‹°ì–´ë³„ ë ˆë²¨, ë§ˆì§€ë§‰ êµ¬ë§¤ ì‹œê°(ì¿¨ë‹¤ìš´ ì²´í¬), ì–¸ë½(ì•„ì´í…œ êµ¬ë§¤)
     private int[] tierLevel = new int[TIERS + 1]; // 0..6
-    private double[] tierCooldownEnd = new double[TIERS + 1]; // °ÔÀÓ ½Ã°£À¸·Î ºñ±³
-    private bool[] tierUnlocked = new bool[TIERS + 1]; // UI_ItemBuy¸¦ ÅëÇØ ¾ğ¶ô
-    private bool[] itemBought = new bool[TIERS + 1]; // 1È¸ ±¸¸Å(¾ÆÀÌÅÛ)
+    private double[] tierCooldownEnd = new double[TIERS + 1]; // ê²Œì„ ì‹œê°„ìœ¼ë¡œ ë¹„êµ
+    private bool[] tierUnlocked = new bool[TIERS + 1]; // UI_ItemBuyë¥¼ í†µí•´ ì–¸ë½
+    private bool[] itemBought = new bool[TIERS + 1]; // 1íšŒ êµ¬ë§¤(ì•„ì´í…œ)
 
     private void Awake()
     {
@@ -52,7 +53,7 @@ public class UpgradeSystem_Test : MonoBehaviour
         }
     }
 
-    // === ÇïÆÛ ÇÔ¼ö ===
+    // === í—¬í¼ í•¨ìˆ˜ ===
     private long Cost(int t, int L)
     {
         double c = baseCost[t] * Math.Pow(costMultiplier[t], L);
@@ -70,19 +71,19 @@ public class UpgradeSystem_Test : MonoBehaviour
         double d = baseGPSInc[t] * (1.0 + L * growthFactorTier[t]);
         d *= unlockMultiplier[t];
         long val = (long)Math.Floor(d);
-        return Math.Max(1, val); // ÃÖ¼Ò 1 º¸Àå
+        return Math.Max(1, val); // ìµœì†Œ 1 ë³´ì¥
     }
     private int CooldownNext(int t, int L)
     {
         return baseCooldown[t] + cooldownIncrease[t] * L;
     }
 
-    // === ¾ÆÀÌÅÛ ±¸¸Å(¾ğ¶ô) ===
+    // === ì•„ì´í…œ êµ¬ë§¤(ì–¸ë½) ===
     public bool BuyItemUnlock(int tierIndex, double gameTime)
     {
         if (tierIndex < 1 || tierIndex > TIERS) return false;
         if (itemBought[tierIndex]) return false;
-        long cost = itemBuyCost[tierIndex - 1]; // ¸ÅÄª: itemBuyCost[0] -> tier 1
+        long cost = itemBuyCost[tierIndex - 1]; // ë§¤ì¹­: itemBuyCost[0] -> tier 1
         if (gold < cost) return false;
         gold -= cost;
         itemBought[tierIndex] = true;
@@ -93,17 +94,17 @@ public class UpgradeSystem_Test : MonoBehaviour
         return true;
     }
 
-    // === ¾÷±×·¹ÀÌµå ½Ãµµ ===
+    // === ì—…ê·¸ë ˆì´ë“œ ì‹œë„ ===
     public bool TryUpgradeTier(int t, double gameTime)
     {
         if (t < 1 || t > TIERS) return false;
-        if (!tierUnlocked[t]) return false; // ¾ğ¶ô ÇÊ¿ä
+        if (!tierUnlocked[t]) return false; // ì–¸ë½ í•„ìš”
         int L = tierLevel[t];
-        if (gameTime < tierCooldownEnd[t]) return false; // ÄğÅ¸ÀÓ Áß
+        if (gameTime < tierCooldownEnd[t]) return false; // ì¿¨íƒ€ì„ ì¤‘
         long cost = Cost(t, L);
         if (gold < cost) return false;
 
-        // ±¸¸Å ½ÇÇà
+        // êµ¬ë§¤ ì‹¤í–‰
         gold -= cost;
         // if itemBought, apply ITEM_UNLOCK_BONUS when computing delta
         double multiplier = itemBought[t] ? ITEM_UNLOCK_BONUS : 1.0;
@@ -114,17 +115,17 @@ public class UpgradeSystem_Test : MonoBehaviour
         GPC += dGPC;
         GPS += dGPS;
 
-        // ·¹º§ Áõ°¡, ÄğÅ¸ÀÓ ¼³Á¤
+        // ë ˆë²¨ ì¦ê°€, ì¿¨íƒ€ì„ ì„¤ì •
         tierLevel[t] = L + 1;
         int cd = CooldownNext(t, L);
         tierCooldownEnd[t] = gameTime + cd;
         return true;
     }
 
-    // === °£´Ü ÀÚµ¿ ±¸¸Å Àü·«(°¡Àå ½Î°í °¡´ÉÇÑ °ÍºÎÅÍ) ===
+    // === ê°„ë‹¨ ìë™ êµ¬ë§¤ ì „ëµ(ê°€ì¥ ì‹¸ê³  ê°€ëŠ¥í•œ ê²ƒë¶€í„°) ===
     private void AutoBuyStrategy(double gameTime)
     {
-        // 1) ¸ÕÀú ¾ğ¶ô °¡´ÉÇÑ ¾ÆÀÌÅÛ Ã¼Å©
+        // 1) ë¨¼ì € ì–¸ë½ ê°€ëŠ¥í•œ ì•„ì´í…œ ì²´í¬
         for (int t = 1; t <= TIERS; t++)
         {
             if (!tierUnlocked[t] && !itemBought[t])
@@ -133,7 +134,7 @@ public class UpgradeSystem_Test : MonoBehaviour
                 if (gold >= cost) { BuyItemUnlock(t, gameTime); return; }
             }
         }
-        // 2) °¡´ÉÇÑ ¾÷±×·¹ÀÌµå Áß ÃÖÀú ºñ¿ë ¿ì¼±
+        // 2) ê°€ëŠ¥í•œ ì—…ê·¸ë ˆì´ë“œ ì¤‘ ìµœì € ë¹„ìš© ìš°ì„ 
         long bestCost = long.MaxValue;
         int bestTier = -1;
         for (int t = 1; t <= TIERS; t++)
@@ -150,28 +151,28 @@ public class UpgradeSystem_Test : MonoBehaviour
         if (bestTier != -1) TryUpgradeTier(bestTier, gameTime);
     }
 
-    // === °ÔÀÓ ·çÇÁ(ÃÊ ´ÜÀ§ ½Ã¹Ä·¹ÀÌÆ® ¿¹½Ã) ===
+    // === ê²Œì„ ë£¨í”„(ì´ˆ ë‹¨ìœ„ ì‹œë®¬ë ˆì´íŠ¸ ì˜ˆì‹œ) ===
     public void Simulate()
     {
         double gameTime = 0.0;
-        double dt = 1.0; // 1ÃÊ ´ÜÀ§·Î ¾÷µ¥ÀÌÆ® (¿øÇÏ¸é ´õ ¼¼ºĞÈ­ °¡´É)
+        double dt = 1.0; // 1ì´ˆ ë‹¨ìœ„ë¡œ ì—…ë°ì´íŠ¸ (ì›í•˜ë©´ ë” ì„¸ë¶„í™” ê°€ëŠ¥)
         for (int sec = 0; sec < PLAY_TIME_SEC; sec++)
         {
-            // 1) Å¬¸¯ ¼öÀÔ (ÇÃ·¹ÀÌ¾î°¡ ¸ÅÃÊ CLICK_PER_SEC ¸¸Å­ Å¬¸¯ÇÑ´Ù°í °¡Á¤)
+            // 1) í´ë¦­ ìˆ˜ì… (í”Œë ˆì´ì–´ê°€ ë§¤ì´ˆ CLICK_PER_SEC ë§Œí¼ í´ë¦­í•œë‹¤ê³  ê°€ì •)
             double clickIncomeThisSec = GPC * CLICK_PER_SEC;
-            // 2) ÀÚµ¿ ¼öÀÔ
+            // 2) ìë™ ìˆ˜ì…
             double autoIncomeThisSec = GPS;
-            // ÇÕ»ê(Á¤¼öÈ­)
+            // í•©ì‚°(ì •ìˆ˜í™”)
             long income = (long)Math.Floor(clickIncomeThisSec + autoIncomeThisSec);
             gold += income;
 
-            // 3) ÀÚµ¿ ±¸¸Å(°£´Ü Àü·«)
+            // 3) ìë™ êµ¬ë§¤(ê°„ë‹¨ ì „ëµ)
             AutoBuyStrategy(gameTime);
 
-            // 4) ½Ã°£ Áõ°¡
+            // 4) ì‹œê°„ ì¦ê°€
             gameTime += dt;
         }
-        // ½Ã¹Ä ³¡: °á°ú Ãâ·Â
-        Debug.Log($"½Ã¹Ä·¹ÀÌ¼Ç Á¾·á ½Ã°£ {PLAY_TIME_SEC}s, °ñµå = {gold}");
+        // ì‹œë®¬ ë: ê²°ê³¼ ì¶œë ¥
+        Debug.Log($"ì‹œë®¬ë ˆì´ì…˜ ì¢…ë£Œ ì‹œê°„ {PLAY_TIME_SEC}s, ê³¨ë“œ = {gold}");
     }
 }

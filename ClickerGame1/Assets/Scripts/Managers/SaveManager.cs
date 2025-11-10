@@ -8,6 +8,8 @@ using UnityEngine;
 // SaveManager: periodically saves/loading game state to a JSON file.
 public class SaveManager : Singleton<SaveManager>
 {
+    public event Action OnLoaded;
+
     [SerializeField] private float _saveInterval = 10f;
     public float SaveInterval { get => _saveInterval; set => _saveInterval = value; }
 
@@ -28,6 +30,13 @@ public class SaveManager : Singleton<SaveManager>
     }
 
     [Serializable]
+    private class CharacterEntry
+    {
+        public string id;
+        public int stars;
+    }
+
+    [Serializable]
     private class SaveData
     {
         public int gold;
@@ -36,9 +45,12 @@ public class SaveManager : Singleton<SaveManager>
         public List<UpgradeEntry> gpcUpgrades = new List<UpgradeEntry>();
         public List<UpgradeEntry> gpsUpgrades = new List<UpgradeEntry>();
         public List<PurchasedEntry> purchasedGpcItems = new List<PurchasedEntry>();
+        public List<CharacterEntry> characterCollections = new List<CharacterEntry>();
     }
 
-    // Awake is not overridden because base Singleton may not expose a virtual Awake
+    // Keep loaded save data in-memory so other systems can query/update it.
+    private SaveData _currentData = null;
+
     protected void Awake()
     {
         Load();
@@ -46,6 +58,8 @@ public class SaveManager : Singleton<SaveManager>
 
     protected virtual void Start()
     {
+        // Ensure default autosave interval
+        _saveInterval = 10f;
         StartCoroutine(AutoSaveRoutine());
     }
 
@@ -70,7 +84,6 @@ public class SaveManager : Singleton<SaveManager>
                 data.goldPerClick = GameManager.Instance.GoldPerClick;
                 data.goldPerSecond = GameManager.Instance.GoldPerSecond;
 
-                // GPC upgrades
                 try
                 {
                     foreach (var kv in GameManager.Instance.GPCUpgrades)
@@ -80,7 +93,6 @@ public class SaveManager : Singleton<SaveManager>
                 }
                 catch { }
 
-                // GPS upgrades
                 try
                 {
                     foreach (var kv in GameManager.Instance.GPSUpgrades)
@@ -90,7 +102,6 @@ public class SaveManager : Singleton<SaveManager>
                 }
                 catch { }
 
-                // Purchased one-time GPC items
                 try
                 {
                     foreach (var kv in GameManager.Instance.PurchasedGPCItems)
@@ -101,8 +112,26 @@ public class SaveManager : Singleton<SaveManager>
                 catch { }
             }
 
+            // Gather character collection states from all CharacterColloection components in the scene (include inactive)
+            try
+            {
+                var frames = UnityEngine.Object.FindObjectsOfType<CharacterColloection>(true);
+                foreach (var frame in frames)
+                {
+                    if (frame == null) continue;
+                    var id = frame.collectionId;
+                    if (string.IsNullOrEmpty(id)) continue;
+                    int stars = frame.GetStars();
+                    data.characterCollections.Add(new CharacterEntry { id = id, stars = stars });
+                }
+            }
+            catch { }
+
             string json = JsonUtility.ToJson(data, true);
             File.WriteAllText(SaveFilePath, json, Encoding.UTF8);
+
+            _currentData = data;
+
 #if UNITY_EDITOR
             Debug.Log($"SaveManager: Saved to {SaveFilePath}");
 #endif
@@ -122,6 +151,7 @@ public class SaveManager : Singleton<SaveManager>
 #if UNITY_EDITOR
                 Debug.Log("SaveManager: No save file found.");
 #endif
+                _currentData = new SaveData();
                 return;
             }
 
@@ -132,8 +162,11 @@ public class SaveManager : Singleton<SaveManager>
 #if UNITY_EDITOR
                 Debug.LogWarning("SaveManager: Failed to parse save file.");
 #endif
+                _currentData = new SaveData();
                 return;
             }
+
+            _currentData = data;
 
             if (GameManager.Instance != null)
             {
@@ -141,7 +174,6 @@ public class SaveManager : Singleton<SaveManager>
                 GameManager.Instance.GoldPerClick = data.goldPerClick;
                 GameManager.Instance.GoldPerSecond = data.goldPerSecond;
 
-                // Apply GPC upgrades
                 try
                 {
                     GameManager.Instance.GPCUpgrades.Clear();
@@ -155,7 +187,6 @@ public class SaveManager : Singleton<SaveManager>
                 }
                 catch { }
 
-                // Apply GPS upgrades
                 try
                 {
                     GameManager.Instance.GPSUpgrades.Clear();
@@ -169,10 +200,8 @@ public class SaveManager : Singleton<SaveManager>
                 }
                 catch { }
 
-                // Apply purchased one-time GPC items
                 try
                 {
-                    // Ensure all keys exist with default false to avoid KeyNotFound
                     GameManager.Instance.PurchasedGPCItems.Clear();
                     foreach (EGPCUpgradeType t in Enum.GetValues(typeof(EGPCUpgradeType)))
                     {
@@ -195,9 +224,35 @@ public class SaveManager : Singleton<SaveManager>
                 GameManager.Instance.GoldPerSecond = GameManager.Instance.GoldPerSecond;
             }
 
+            // After loading save data, apply saved stars to any present CharacterColloection components
+            try
+            {
+                if (data.characterCollections != null && data.characterCollections.Count > 0)
+                {
+                    var frames = UnityEngine.Object.FindObjectsOfType<CharacterColloection>(true);
+                    foreach (var entry in data.characterCollections)
+                    {
+                        if (string.IsNullOrEmpty(entry.id)) continue;
+                        foreach (var frame in frames)
+                        {
+                            if (frame == null) continue;
+                            if (string.Equals(frame.collectionId, entry.id, StringComparison.OrdinalIgnoreCase))
+                            {
+                                // Use public API to set stars which will update visuals and persist if needed
+                                frame.SetStars(entry.stars);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
 #if UNITY_EDITOR
             Debug.Log($"SaveManager: Loaded save from {SaveFilePath}");
 #endif
+
+            OnLoaded?.Invoke();
         }
         catch (Exception ex)
         {
@@ -223,7 +278,6 @@ public class SaveManager : Singleton<SaveManager>
 #endif
             }
 
-            // Optionally reinitialize in-memory data if GameManager exposes a method
             try
             {
                 if (GameManager.Instance != null)
@@ -252,5 +306,40 @@ public class SaveManager : Singleton<SaveManager>
     private void OnApplicationPause(bool pause)
     {
         if (pause) Save();
+    }
+
+    // Public API for other scripts to query or update character collection stars
+    public int GetSavedCharacterStars(string id)
+    {
+        if (_currentData == null) _currentData = new SaveData();
+        if (string.IsNullOrEmpty(id)) return 0;
+        try
+        {
+            var e = _currentData.characterCollections.Find(x => string.Equals(x.id, id, StringComparison.OrdinalIgnoreCase));
+            return e != null ? Mathf.Clamp(e.stars, 0, 5) : 0;
+        }
+        catch { return 0; }
+    }
+
+    public void SetSavedCharacterStars(string id, int stars)
+    {
+        if (_currentData == null) _currentData = new SaveData();
+        if (string.IsNullOrEmpty(id)) return;
+        try
+        {
+            var e = _currentData.characterCollections.Find(x => string.Equals(x.id, id, StringComparison.OrdinalIgnoreCase));
+            if (e == null)
+            {
+                e = new CharacterEntry { id = id, stars = Mathf.Clamp(stars, 0, 5) };
+                _currentData.characterCollections.Add(e);
+            }
+            else
+            {
+                e.stars = Mathf.Clamp(stars, 0, 5);
+            }
+            // Save immediately to persist the change
+            Save();
+        }
+        catch { }
     }
 }
