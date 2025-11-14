@@ -680,7 +680,7 @@ PlayerSettings:
   webWasm2023: 0
   webEnableSubmoduleStrippingCompatibility: 0
   scriptingDefineSymbols:
-    Android: DOTWEEN
+    Android: DOTWEEN;LEVELPLAY_DEPENDENCIES_INSTALLED
     EmbeddedLinux: DOTWEEN
     GameCoreScarlett: DOTWEEN
     GameCoreXboxOne: DOTWEEN
@@ -778,7 +778,7 @@ PlayerSettings:
     Build: 0
     Game Performance: 0
     Legacy Analytics: 0
-    Purchasing: 0
+    Purchasing: 1
     UDP: 0
     Unity Ads: 0
   luminIcon:
@@ -802,11 +802,11 @@ PlayerSettings:
   captureStartupLogs: {}
   activeInputHandler: 1
   windowsGamepadBackendHint: 0
-  cloudProjectId: 
+  cloudProjectId: 29739af0-ed8e-4e4e-8a3a-6ae56a789d30
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: 
-  organizationId: 
+  projectName: ClickerGame1
+  organizationId: mhyim
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
