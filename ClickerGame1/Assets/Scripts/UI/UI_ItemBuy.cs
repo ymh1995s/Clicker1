@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,7 +8,11 @@ public class UI_ItemBuy : UI_Base
 {
     [SerializeField] private Button _clickButton;
     [SerializeField] private EGPCUpgradeType _gpcUpgradeType;
-    [SerializeField] private int _price = 100; // default price
+    // NOTE: _price should NOT be treated as authoritative. The authoritative item buy
+    // costs are defined in UpgradeConfig (UpgradeSystem) and exposed via GameManager.GetItemBuyCost.
+    // Do not set this value in the Inspector — it is kept here only for UI convenience and
+    // will be overwritten at runtime from GameManager. This avoids "dual ownership" (2중 관리).
+    private int _price; // default price is loaded from GameManager in Awake/RefreshUI
 
     // New: Need money UI under this buy button
     [SerializeField] private GameObject _needMoneyImage;
@@ -59,6 +63,7 @@ public class UI_ItemBuy : UI_Base
             catch (Exception)
             {
                 // keep default if any error
+                _price = 0;
             }
         }
     }

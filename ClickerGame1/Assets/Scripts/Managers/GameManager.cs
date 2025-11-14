@@ -1,4 +1,4 @@
-﻿// 2025-11-01 AI-Tag
+// 2025-11-01 AI-Tag
 // This was created with the help of Assistant, a Unity Artificial Intelligence product.
 
 using System;
@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using ClickerGame; // use UpgradeConfig from UpgradeSystem
 // Summary:
 // This is the GameManager class, implemented as a Singleton. It manages the core game state and data,
 // including gold, upgrades, and their levels. It provides public getters and setters for all variables,
@@ -31,8 +32,8 @@ public class GameManager : Singleton<GameManager>
     public event Action OnGoldChanged;
 
     // Gold per click (GPC)
-    // Default GPC set to 10 to match UpgradeSystem_Test initial assumptions
-    [SerializeField] private int _goldPerClick = 10;
+    // Default GPC set to 50 to match UpgradeSystem requested initial GPC
+    [SerializeField] private int _goldPerClick = 50;
     public int GoldPerClick
     {
         get => _goldPerClick;
@@ -56,6 +57,156 @@ public class GameManager : Singleton<GameManager>
         }
     }
     public event Action OnGoldPerSecondChanged;
+
+    // New: Crystal and CPM (crystals per minute)
+    [SerializeField] private int _crystal = 0;
+    public int Crystal
+    {
+        get => _crystal;
+        set
+        {
+            _crystal = value;
+            // You can add an OnCrystalChanged event if needed
+        }
+    }
+
+    [SerializeField] private int _cpm = 0; // crystals per minute
+    public int CPM
+    {
+        get => _cpm;
+        set
+        {
+            _cpm = value;
+            // update UI if required
+        }
+    }
+
+    // Character-based modifiers storage
+    private Dictionary<string, int> _characterStars = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+    // Aggregated character effect fields
+    private int _startGoldFromChars = 0;
+    private double _characterGpcBonusPercent = 0.0; // e.g. 0.10 for +10%
+    private double _characterGpsBonusPercent = 0.0;
+    private int _clearCrystalReward = 0;
+
+    // Public accessors for character-derived values
+    public int StartGoldFromCharacters => _startGoldFromChars;
+    public double CharacterGpcBonusPercent => _characterGpcBonusPercent;
+    public double CharacterGpsBonusPercent => _characterGpsBonusPercent;
+    public int ClearCrystalReward => _clearCrystalReward;
+
+    // Call this when a character's star count changes
+    public void UpdateCharacterStars(string id, int stars)
+    {
+        if (string.IsNullOrEmpty(id)) return;
+        _characterStars[id] = Mathf.Clamp(stars, 0, 5);
+        RecalculateCharacterEffects();
+    }
+
+    private void RecalculateCharacterEffects()
+    {
+        // reset
+        _startGoldFromChars = 0;
+        _characterGpcBonusPercent = 0.0;
+        _characterGpsBonusPercent = 0.0;
+        CPM = 0;
+        _clearCrystalReward = 0;
+
+        foreach (var kv in _characterStars)
+        {
+            string id = kv.Key.ToUpperInvariant();
+            int s = Mathf.Clamp(kv.Value, 0, 5);
+            switch (id)
+            {
+                case "A":
+                case "B":
+                    _startGoldFromChars = Math.Max(_startGoldFromChars, GetStartGoldForStars(s));
+                    break;
+                case "C":
+                case "D":
+                    _characterGpcBonusPercent += GetGpcPercentForStars(s);
+                    break;
+                case "E":
+                case "F":
+                    _characterGpsBonusPercent += GetGpsPercentForStars(s);
+                    break;
+                case "G":
+                case "H":
+                    CPM += GetCpmForStars(s);
+                    break;
+                case "I":
+                case "J":
+                    _clearCrystalReward += GetClearCrystalForStars(s);
+                    break;
+            }
+        }
+
+        // Recalculate gold stats with character bonuses applied
+        RecalculateGoldPerClick();
+        RecalculateGoldPerSecond();
+
+        // Optionally log
+        Debug.Log($"Character effects applied: StartGold={_startGoldFromChars}, GPC%={_characterGpcBonusPercent:P}, GPS%={_characterGpsBonusPercent:P}, CPM={CPM}, ClearCrystal={_clearCrystalReward}");
+    }
+
+    private int GetStartGoldForStars(int s)
+    {
+        switch (s)
+        {
+            case 1: return 1000;
+            case 2: return 1200;
+            case 3: return 1500;
+            case 4: return 1700;
+            case 5: return 2000;
+            default: return 0;
+        }
+    }
+
+    private double GetGpcPercentForStars(int s)
+    {
+        switch (s)
+        {
+            case 1: return 0.10;
+            case 2: return 0.12;
+            case 3: return 0.15;
+            case 4: return 0.17;
+            case 5: return 0.20;
+            default: return 0.0;
+        }
+    }
+
+    private double GetGpsPercentForStars(int s)
+    {
+        // same mapping as GPC
+        return GetGpcPercentForStars(s);
+    }
+
+    private int GetCpmForStars(int s)
+    {
+        switch (s)
+        {
+            case 1: return 5;
+            case 2: return 6;
+            case 3: return 8;
+            case 4: return 9;
+            case 5: return 10;
+            default: return 0;
+        }
+    }
+
+    private int GetClearCrystalForStars(int s)
+    {
+        switch (s)
+        {
+            case 1: return 100;
+            case 2: return 120;
+            case 3: return 150;
+            case 4: return 170;
+            case 5: return 200;
+            default: return 0;
+        }
+    }
 
     // GPC Upgrades and their levels
     [SerializeField] private Dictionary<EGPCUpgradeType, int> _gpcUpgrades = new Dictionary<EGPCUpgradeType, int>
@@ -108,34 +259,19 @@ public class GameManager : Singleton<GameManager>
         return new List<KeyValuePair<EGPCUpgradeType, bool>>(_purchasedGPCItems);
     }
 
-    // Item buy costs (matches UpgradeSystem_Test itemBuyCost for tiers 1..6)
-    private readonly int[] _itemBuyCosts = { 1000, 5000, 25000, 100000, 500000, 2000000 };
+    // Item buy costs are defined in UpgradeConfig. Provide a thin wrapper so UI calls remain unchanged.
     public int GetItemBuyCost(EGPCUpgradeType tier)
     {
         int idx = (int)tier; // Tier1 -> 0
-        if (idx < 0 || idx >= _itemBuyCosts.Length) return 0;
-        return _itemBuyCosts[idx];
+        if (idx < 0 || idx >= UpgradeConfig.ItemBuyCosts.Length) return 0;
+        return (int)UpgradeConfig.ItemBuyCosts[idx];
     }
 
-    // --- Growth parameters taken from UpgradeSystem_Test (mapped to 0-based arrays) ---
-    // base incremental GPC added per purchase for each tier
-    private readonly double[] _baseGPCInc = { 1.0, 5.0, 25.0, 120.0, 600.0, 3000.0 };
-    // linear growth factor per additional level used in DeltaGPC = base * (1 + L * growth)
-    private readonly double[] _gpcLevelGrowth = { 0.02, 0.03, 0.04, 0.05, 0.06, 0.08 };
+    // Growth parameters are sourced from UpgradeConfig (UpgradeSystem)
 
-    // base incremental GPS added per purchase
-    private readonly double[] _baseGPSInc = { 1.0, 2.0, 10.0, 40.0, 200.0, 1000.0 };
-    private readonly double[] _gpsLevelGrowth = { 0.02, 0.03, 0.04, 0.05, 0.06, 0.08 };
-
-    // base click value to preserve initial GPC (UpgradeSystem_Test uses 10 as starting GPC)
-    private const double _baseClickValue = 10.0;
-
-    // Item unlock multiplier when purchased via UI_ItemBuy
-    private const double ITEM_UNLOCK_BONUS = 1.15;
-
-    // --- Cooldown per tier (based on UpgradeSystem_Test)
-    private readonly int[] _baseCooldownPerTier = { 5, 10, 20, 40, 80, 160 };
-    private readonly int[] _cooldownIncreasePerTier = { 1, 2, 3, 5, 10, 20 };
+    // Use UpgradeConfig for cooldowns
+    private int[] _baseCooldownPerTier => UpgradeConfig.BaseCooldownPerTier;
+    private int[] _cooldownIncreasePerTier => UpgradeConfig.CooldownIncreasePerTier;
 
     // Next available time per GPC tier (seconds, Time.time)
     private readonly Dictionary<EGPCUpgradeType, double> _tierNextAvailableTime = new Dictionary<EGPCUpgradeType, double>();
@@ -158,8 +294,8 @@ public class GameManager : Singleton<GameManager>
         int storedLevel = 1;
         if (_gpcUpgrades.TryGetValue(tier, out var lv)) storedLevel = lv;
         int purchases = Math.Max(0, storedLevel - 1);
-        int baseCd = (idx >= 0 && idx < _baseCooldownPerTier.Length) ? _baseCooldownPerTier[idx] : 0;
-        int inc = (idx >= 0 && idx < _cooldownIncreasePerTier.Length) ? _cooldownIncreasePerTier[idx] : 0;
+        int baseCd = (idx >= 0 && idx < UpgradeConfig.BaseCooldownPerTier.Length) ? UpgradeConfig.BaseCooldownPerTier[idx] : 0;
+        int inc = (idx >= 0 && idx < UpgradeConfig.CooldownIncreasePerTier.Length) ? UpgradeConfig.CooldownIncreasePerTier[idx] : 0;
         return baseCd + inc * purchases;
     }
 
@@ -191,7 +327,7 @@ public class GameManager : Singleton<GameManager>
     // Recalculate GoldPerClick using linear-per-level increment formula from UpgradeSystem_Test
     public void RecalculateGoldPerClick()
     {
-        double total = _baseClickValue; // start with base click value (e.g. 10)
+        double total = UpgradeConfig.BaseClickValue; // start with base click value (from UpgradeConfig)
 
         var enumValues = Enum.GetValues(typeof(EGPCUpgradeType));
         for (int i = 0; i < enumValues.Length; i++)
@@ -202,13 +338,13 @@ public class GameManager : Singleton<GameManager>
 
             int purchases = Math.Max(0, storedLevel - 1);
 
-            double baseInc = (i < _baseGPCInc.Length) ? _baseGPCInc[i] : 0.0;
-            double growth = (i < _gpcLevelGrowth.Length) ? _gpcLevelGrowth[i] : 0.0;
+            double baseInc = (i < UpgradeConfig.BaseGPCInc.Length) ? UpgradeConfig.BaseGPCInc[i] : 0.0;
+            double growth = (i < UpgradeConfig.GpcLevelGrowth.Length) ? UpgradeConfig.GpcLevelGrowth[i] : 0.0;
 
             // apply unlock multiplier if the one-time item was bought for this tier
             double unlockMult = 1.0;
             if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(key, out var bought) && bought)
-                unlockMult = ITEM_UNLOCK_BONUS;
+                unlockMult = UpgradeConfig.ITEM_UNLOCK_BONUS;
 
             // Sum over previous purchases: for k = 0..purchases-1, add base * (1 + k * growth) * unlockMult;
             for (int k = 0; k < purchases; k++)
@@ -216,6 +352,9 @@ public class GameManager : Singleton<GameManager>
                 total += baseInc * (1.0 + k * growth) * unlockMult;
             }
         }
+
+        // Apply character GPC percent bonus
+        total = total * (1.0 + _characterGpcBonusPercent);
 
         GoldPerClick = (int)Math.Ceiling(total);
     }
@@ -236,12 +375,12 @@ public class GameManager : Singleton<GameManager>
 
             int purchases = Math.Max(0, storedLevel - 1);
 
-            double baseInc = (i < _baseGPSInc.Length) ? _baseGPSInc[i] : 0.0;
-            double growth = (i < _gpsLevelGrowth.Length) ? _gpsLevelGrowth[i] : 0.0;
+            double baseInc = (i < UpgradeConfig.BaseGPSInc.Length) ? UpgradeConfig.BaseGPSInc[i] : 0.0;
+            double growth = (i < UpgradeConfig.GpsLevelGrowth.Length) ? UpgradeConfig.GpsLevelGrowth[i] : 0.0;
 
             double unlockMult = 1.0;
             if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(key, out var bought) && bought)
-                unlockMult = ITEM_UNLOCK_BONUS;
+                unlockMult = UpgradeConfig.ITEM_UNLOCK_BONUS;
 
             for (int k = 0; k < purchases; k++)
             {
@@ -249,12 +388,11 @@ public class GameManager : Singleton<GameManager>
             }
         }
 
+        // Apply character GPS percent bonus
+        total = total * (1.0 + _characterGpsBonusPercent);
+
         GoldPerSecond = (int)Math.Ceiling(total);
     }
-
-    // Upgrade cost data (matches UpgradeSystem_Test baseCost and costMultiplier, 0-based for Tier1..Tier6)
-    private readonly double[] _upgradeBaseCost = { 100.0, 500.0, 2500.0, 12500.0, 60000.0, 300000.0 };
-    private readonly double[] _upgradeCostMultiplier = { 1.15, 1.17, 1.20, 1.22, 1.25, 1.30 };
 
     // Get current stored level for tier (storedLevel mapping: 1 => zero purchases)
     public int GetStoredGpcLevel(EGPCUpgradeType tier)
@@ -263,14 +401,15 @@ public class GameManager : Singleton<GameManager>
         return 1;
     }
 
+    // Upgrade cost data (matches UpgradeSystem_Test baseCost and costMultiplier, 0-based for Tier1..Tier6)
     // Get cost for next upgrade of given tier
     public long GetUpgradeCost(EGPCUpgradeType tier)
     {
         int idx = (int)tier; // Tier1 -> 0
         int storedLevel = GetStoredGpcLevel(tier);
         int purchases = Math.Max(0, storedLevel - 1); // purchases already made
-        double baseCost = (idx >= 0 && idx < _upgradeBaseCost.Length) ? _upgradeBaseCost[idx] : 0.0;
-        double mult = (idx >= 0 && idx < _upgradeCostMultiplier.Length) ? _upgradeCostMultiplier[idx] : 1.0;
+        double baseCost = (idx >= 0 && idx < UpgradeConfig.UpgradeBaseCost.Length) ? UpgradeConfig.UpgradeBaseCost[idx] : 0.0;
+        double mult = (idx >= 0 && idx < UpgradeConfig.UpgradeCostMultiplier.Length) ? UpgradeConfig.UpgradeCostMultiplier[idx] : 1.0;
         double cost = baseCost * Math.Pow(mult, purchases);
         return (long)Math.Floor(cost);
     }
@@ -307,12 +446,12 @@ public class GameManager : Singleton<GameManager>
         int storedLevel = GetStoredGpcLevel(tier);
         int purchases = Math.Max(0, storedLevel - 1);
 
-        double baseInc = (idx >= 0 && idx < _baseGPCInc.Length) ? _baseGPCInc[idx] : 0.0;
-        double growth = (idx >= 0 && idx < _gpcLevelGrowth.Length) ? _gpcLevelGrowth[idx] : 0.0;
+        double baseInc = (idx >= 0 && idx < UpgradeConfig.BaseGPCInc.Length) ? UpgradeConfig.BaseGPCInc[idx] : 0.0;
+        double growth = (idx >= 0 && idx < UpgradeConfig.GpcLevelGrowth.Length) ? UpgradeConfig.GpcLevelGrowth[idx] : 0.0;
 
         double unlockMult = 1.0;
         if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(tier, out var bought) && bought)
-            unlockMult = ITEM_UNLOCK_BONUS;
+            unlockMult = UpgradeConfig.ITEM_UNLOCK_BONUS;
 
         double delta = baseInc * (1.0 + purchases * growth) * unlockMult;
         return (long)Math.Ceiling(delta);
@@ -324,12 +463,12 @@ public class GameManager : Singleton<GameManager>
         int storedLevel = GetStoredGpcLevel(tier);
         int purchases = Math.Max(0, storedLevel - 1);
 
-        double baseInc = (idx >= 0 && idx < _baseGPSInc.Length) ? _baseGPSInc[idx] : 0.0;
-        double growth = (idx >= 0 && idx < _gpsLevelGrowth.Length) ? _gpsLevelGrowth[idx] : 0.0;
+        double baseInc = (idx >= 0 && idx < UpgradeConfig.BaseGPSInc.Length) ? UpgradeConfig.BaseGPSInc[idx] : 0.0;
+        double growth = (idx >= 0 && idx < UpgradeConfig.GpsLevelGrowth.Length) ? UpgradeConfig.GpsLevelGrowth[idx] : 0.0;
 
         double unlockMult = 1.0;
         if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(tier, out var bought) && bought)
-            unlockMult = ITEM_UNLOCK_BONUS;
+            unlockMult = UpgradeConfig.ITEM_UNLOCK_BONUS;
 
         double delta = baseInc * (1.0 + purchases * growth) * unlockMult;
         return (long)Math.Ceiling(delta);
@@ -341,7 +480,7 @@ public class GameManager : Singleton<GameManager>
     public int GetProjectedGpcIncrease(EGPCUpgradeType tier)
     {
         // compute exact total before
-        double totalBefore = _baseClickValue;
+        double totalBefore = UpgradeConfig.BaseClickValue;
         var enumValues = Enum.GetValues(typeof(EGPCUpgradeType));
         for (int i = 0; i < enumValues.Length; i++)
         {
@@ -351,12 +490,12 @@ public class GameManager : Singleton<GameManager>
 
             int purchases = Math.Max(0, storedLevel - 1);
 
-            double baseInc = (i < _baseGPCInc.Length) ? _baseGPCInc[i] : 0.0;
-            double growth = (i < _gpcLevelGrowth.Length) ? _gpcLevelGrowth[i] : 0.0;
+            double baseInc = (i < UpgradeConfig.BaseGPCInc.Length) ? UpgradeConfig.BaseGPCInc[i] : 0.0;
+            double growth = (i < UpgradeConfig.GpcLevelGrowth.Length) ? UpgradeConfig.GpcLevelGrowth[i] : 0.0;
 
             double unlockMult = 1.0;
             if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(key, out var bought) && bought)
-                unlockMult = ITEM_UNLOCK_BONUS;
+                unlockMult = UpgradeConfig.ITEM_UNLOCK_BONUS;
 
             for (int k = 0; k < purchases; k++)
             {
@@ -368,11 +507,11 @@ public class GameManager : Singleton<GameManager>
         int idxTier = (int)tier;
         int stored = GetStoredGpcLevel(tier);
         int purchasesTier = Math.Max(0, stored - 1);
-        double baseIncTier = (idxTier >= 0 && idxTier < _baseGPCInc.Length) ? _baseGPCInc[idxTier] : 0.0;
-        double growthTier = (idxTier >= 0 && idxTier < _gpcLevelGrowth.Length) ? _gpcLevelGrowth[idxTier] : 0.0;
+        double baseIncTier = (idxTier >= 0 && idxTier < UpgradeConfig.BaseGPCInc.Length) ? UpgradeConfig.BaseGPCInc[idxTier] : 0.0;
+        double growthTier = (idxTier >= 0 && idxTier < UpgradeConfig.GpcLevelGrowth.Length) ? UpgradeConfig.GpcLevelGrowth[idxTier] : 0.0;
         double unlockMultTier = 1.0;
         if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(tier, out var boughtTier) && boughtTier)
-            unlockMultTier = ITEM_UNLOCK_BONUS;
+            unlockMultTier = UpgradeConfig.ITEM_UNLOCK_BONUS;
 
         double deltaExact = baseIncTier * (1.0 + purchasesTier * growthTier) * unlockMultTier;
 
@@ -396,12 +535,12 @@ public class GameManager : Singleton<GameManager>
 
             int purchases = Math.Max(0, storedLevel - 1);
 
-            double baseInc = (i < _baseGPSInc.Length) ? _baseGPSInc[i] : 0.0;
-            double growth = (i < _gpsLevelGrowth.Length) ? _gpsLevelGrowth[i] : 0.0;
+            double baseInc = (i < UpgradeConfig.BaseGPSInc.Length) ? UpgradeConfig.BaseGPSInc[i] : 0.0;
+            double growth = (i < UpgradeConfig.GpsLevelGrowth.Length) ? UpgradeConfig.GpsLevelGrowth[i] : 0.0;
 
             double unlockMult = 1.0;
             if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(key, out var bought) && bought)
-                unlockMult = ITEM_UNLOCK_BONUS;
+                unlockMult = UpgradeConfig.ITEM_UNLOCK_BONUS;
 
             for (int k = 0; k < purchases; k++)
             {
@@ -412,11 +551,11 @@ public class GameManager : Singleton<GameManager>
         int idxTier = (int)tier;
         int stored = GetStoredGpcLevel(tier);
         int purchasesTier = Math.Max(0, stored - 1);
-        double baseIncTier = (idxTier >= 0 && idxTier < _baseGPSInc.Length) ? _baseGPSInc[idxTier] : 0.0;
-        double growthTier = (idxTier >= 0 && idxTier < _gpsLevelGrowth.Length) ? _gpsLevelGrowth[idxTier] : 0.0;
+        double baseIncTier = (idxTier >= 0 && idxTier < UpgradeConfig.BaseGPSInc.Length) ? UpgradeConfig.BaseGPSInc[idxTier] : 0.0;
+        double growthTier = (idxTier >= 0 && idxTier < UpgradeConfig.GpcLevelGrowth.Length) ? UpgradeConfig.GpcLevelGrowth[idxTier] : 0.0;
         double unlockMultTier = 1.0;
         if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(tier, out var boughtTier) && boughtTier)
-            unlockMultTier = ITEM_UNLOCK_BONUS;
+            unlockMultTier = UpgradeConfig.ITEM_UNLOCK_BONUS;
 
         double deltaExact = baseIncTier * (1.0 + purchasesTier * growthTier) * unlockMultTier;
 
@@ -435,7 +574,7 @@ public class GameManager : Singleton<GameManager>
         RecalculateGoldPerSecond();
 
         // Ensure GPC starts at least at base click runtime (fallback)
-        GoldPerClick = Math.Max((int)_baseClickValue, GoldPerClick);
+        GoldPerClick = Math.Max((int)UpgradeConfig.BaseClickValue, GoldPerClick);
 
         // Initialize other properties so any subscribers receive the initial values
         Gold = _gold;

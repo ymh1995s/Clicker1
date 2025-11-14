@@ -1,4 +1,4 @@
-﻿// 2025-11-01 AI-Tag
+// 2025-11-01 AI-Tag
 // This was created with the help of Assistant, a Unity Artificial Intelligence product.
 
 using System;
@@ -45,6 +45,10 @@ public class UI_Upgrade : UI_Base
     // New: Text fields under ClickButton to show this-upgrade deltas
     [SerializeField] private TMP_Text _gpcStatText;
     [SerializeField] private TMP_Text _gpsStatText;
+
+    // NOTE: UI should not re-store authoritative values like nextCost or cooldown in serialized fields.
+    // Always read from GameManager/UpgradeConfig. This prevents 2중 관리 where Inspector values diverge
+    // from gameplay code. The following fields are read-only mirrors for debugging only.
 
     protected override void Awake()
     {

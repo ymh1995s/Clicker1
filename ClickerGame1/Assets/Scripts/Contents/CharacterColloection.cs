@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 // Manages a character collection frame UI with stars and a hide placeholder.
 // Structure expected in the GameObject:
@@ -9,6 +10,10 @@ using UnityEngine.UI;
 // - Stars (GameObject)
 //   - NonStar1..NonStar5
 //   - Star1..Star5
+// - HideExplain (GameObject)
+// - Icon (GameObject)
+// - ExplainTxt (TMP_Text)
+// - ValueTxt (TMP_Text)
 // The frame has an identifier 'collectionId' used for saving/loading. Star count ranges 0..5.
 public class CharacterColloection : MonoBehaviour
 {
@@ -30,6 +35,12 @@ public class CharacterColloection : MonoBehaviour
     [SerializeField] private GameObject characterImage;
     [SerializeField] private GameObject starsRoot;
 
+    // New UI explain fields
+    [SerializeField] private GameObject hideExplain;
+    [SerializeField] private GameObject icon;
+    [SerializeField] private TMP_Text explainTxt;
+    [SerializeField] private TMP_Text valueTxt;
+
     // internal current star count (0..5)
     [SerializeField] private int _currentStars = 0;
 
@@ -45,6 +56,20 @@ public class CharacterColloection : MonoBehaviour
         if (hideCharacter == null) hideCharacter = FindChild("HideCharacter");
         if (characterImage == null) characterImage = FindChild("Character");
         if (starsRoot == null) starsRoot = FindChild("Stars");
+
+        // New UI auto-find
+        if (hideExplain == null) hideExplain = FindChild("HideExplain");
+        if (icon == null) icon = FindChild("Icon");
+        if (explainTxt == null)
+        {
+            var et = transform.Find("ExplainTxt") ?? transform.Find("ExplainText");
+            if (et != null) explainTxt = et.GetComponent<TMP_Text>();
+        }
+        if (valueTxt == null)
+        {
+            var vt = transform.Find("ValueTxt") ?? transform.Find("ValueText");
+            if (vt != null) valueTxt = vt.GetComponent<TMP_Text>();
+        }
 
         // populate star arrays
         if (starsRoot != null)
@@ -64,6 +89,12 @@ public class CharacterColloection : MonoBehaviour
         }
 
         ApplyVisualState();
+
+        // Notify GameManager of current stars so effects apply on startup
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.UpdateCharacterStars(collectionId, _currentStars);
+        }
     }
 
     private void Start()
@@ -74,6 +105,11 @@ public class CharacterColloection : MonoBehaviour
             _currentStars = SaveManager.Instance.GetSavedCharacterStars(collectionId);
             _loadedFromSave = true;
             ApplyVisualState();
+
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.UpdateCharacterStars(collectionId, _currentStars);
+            }
         }
     }
 
@@ -95,6 +131,11 @@ public class CharacterColloection : MonoBehaviour
         if (SaveManager.Instance == null) return;
         _currentStars = SaveManager.Instance.GetSavedCharacterStars(collectionId);
         ApplyVisualState();
+
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.UpdateCharacterStars(collectionId, _currentStars);
+        }
     }
 
     private GameObject FindChild(string name)
@@ -123,6 +164,121 @@ public class CharacterColloection : MonoBehaviour
             if (nonStars[i] != null) nonStars[i].SetActive(!hasInfo || i >= _currentStars);
             if (stars[i] != null) stars[i].SetActive(hasInfo && i < _currentStars);
         }
+
+        // Explain UI behavior
+        if (_currentStars <= 0)
+        {
+            if (hideExplain != null) hideExplain.SetActive(true);
+            if (icon != null) icon.SetActive(false);
+            if (explainTxt != null) explainTxt.gameObject.SetActive(false);
+            if (valueTxt != null) valueTxt.gameObject.SetActive(false);
+        }
+        else
+        {
+            if (hideExplain != null) hideExplain.SetActive(false);
+            if (icon != null) icon.SetActive(true);
+            if (explainTxt != null) explainTxt.gameObject.SetActive(true);
+            if (valueTxt != null) valueTxt.gameObject.SetActive(true);
+
+            // update explain/value text based on character type and star count
+            UpdateExplainAndValue();
+        }
+    }
+
+    private void UpdateExplainAndValue()
+    {
+        string id = collectionIdEnum.ToString();
+        int s = Mathf.Clamp(_currentStars, 0, 5);
+
+        string value = "";
+
+        switch (id)
+        {
+            case "A":
+            case "B":
+                // Keep explainTxt as configured in Inspector; only update value text
+                value = s > 0 ? $"+{GetStartGoldForStars(s):N0}" : "";
+                break;
+            case "C":
+            case "D":
+                value = s > 0 ? $"+{(int)(GetGpcPercentForStars(s) * 100)}%" : "";
+                break;
+            case "E":
+            case "F":
+                value = s > 0 ? $"+{(int)(GetGpsPercentForStars(s) * 100)}%" : "";
+                break;
+            case "G":
+            case "H":
+                value = s > 0 ? $"+{GetCpmForStars(s)} /m" : "";
+                break;
+            case "I":
+            case "J":
+                value = s > 0 ? $"+{GetClearCrystalForStars(s):N0}" : "";
+                break;
+            default:
+                value = "";
+                break;
+        }
+
+        // Do not overwrite explainTxt (preserve Inspector value)
+        if (valueTxt != null) valueTxt.text = value;
+    }
+
+    private int GetStartGoldForStars(int s)
+    {
+        switch (s)
+        {
+            case 1: return 1000;
+            case 2: return 1200;
+            case 3: return 1500;
+            case 4: return 1700;
+            case 5: return 2000;
+            default: return 0;
+        }
+    }
+
+    private double GetGpcPercentForStars(int s)
+    {
+        switch (s)
+        {
+            case 1: return 0.10;
+            case 2: return 0.12;
+            case 3: return 0.15;
+            case 4: return 0.17;
+            case 5: return 0.20;
+            default: return 0.0;
+        }
+    }
+
+    private double GetGpsPercentForStars(int s)
+    {
+        return GetGpcPercentForStars(s);
+    }
+
+    private int GetCpmForStars(int s)
+    {
+        switch (s)
+        {
+            case 1: return 5;
+            case 2: return 6;
+            case 3: return 8;
+            case 4: return 9;
+            case 5: return 10;
+            default: return 0;
+        }
+    }
+
+    private int GetClearCrystalForStars(int s)
+    {
+        switch (s)
+        {
+            case 1: return 100;
+            case 2: return 120;
+            case 3: return 150;
+            case 4: return 170;
+            case 5: return 200;
+            default: return 0;
+        }
     }
 
     // Called externally (e.g. on click events) to add a star.
@@ -139,6 +295,12 @@ public class CharacterColloection : MonoBehaviour
             SaveManager.Instance.SetSavedCharacterStars(collectionId, _currentStars);
         }
 
+        // Notify GameManager of change
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.UpdateCharacterStars(collectionId, _currentStars);
+        }
+
         return true;
     }
 
@@ -150,6 +312,11 @@ public class CharacterColloection : MonoBehaviour
         if (SaveManager.Instance != null)
         {
             SaveManager.Instance.SetSavedCharacterStars(collectionId, _currentStars);
+        }
+
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.UpdateCharacterStars(collectionId, _currentStars);
         }
     }
 

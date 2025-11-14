@@ -37,8 +37,16 @@ public class UI_ClickerGame : UI_Base
     [SerializeField] private TMP_Text _goldPerSecText;
     [SerializeField] private TMP_Text _goldText;
 
+    // Crystal UI
+    [SerializeField] private TMP_Text _crystalText;
+    [SerializeField] private TMP_Text _crystalPerMinText;
+
     private float _goldIncrementTimer;
     private Vector2 _lastClickScreenPos;
+
+    // update timer for crystal display
+    private float _crystalUpdateTimer = 0f;
+    private const float CRYSTAL_UPDATE_INTERVAL = 0.5f; // seconds
 
     protected override void Awake()
     {
@@ -58,6 +66,12 @@ public class UI_ClickerGame : UI_Base
         _goldPerClickText = FindChildGameObject("GoldPerClickText").GetComponent<TMP_Text>();
         _goldPerSecText = FindChildGameObject("GoldPerSecText").GetComponent<TMP_Text>();
         _goldText = FindChildGameObject("GoldText").GetComponent<TMP_Text>();
+
+        // crystal texts (optional children)
+        var ctGo = FindChildGameObjectOptional("CrystalText");
+        if (ctGo != null) _crystalText = ctGo.GetComponent<TMP_Text>();
+        var cpmGo = FindChildGameObjectOptional("CrystalTextPerMinText") ?? FindChildGameObjectOptional("CrystalPerMinText");
+        if (cpmGo != null) _crystalPerMinText = cpmGo.GetComponent<TMP_Text>();
     }
 
     protected override void Start()
@@ -71,6 +85,15 @@ public class UI_ClickerGame : UI_Base
     {
         base.Update();
         UpdateGoldPerSecond();
+
+        // update crystal display periodically
+        _crystalUpdateTimer += Time.deltaTime;
+        if (_crystalUpdateTimer >= CRYSTAL_UPDATE_INTERVAL)
+        {
+            _crystalUpdateTimer = 0f;
+            UpdateCrystalText();
+            UpdateCrystalPerMinText();
+        }
 
         // Handle input for click/tap to add gold at that screen position
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
@@ -139,6 +162,10 @@ public class UI_ClickerGame : UI_Base
         UpdateGoldText();
         UpdateGoldPerClickText();
         UpdateGoldPerSecText();
+
+        // Update crystal texts as well
+        UpdateCrystalText();
+        UpdateCrystalPerMinText();
 
         // Note: GameManager subscriptions are handled in OnEnable/OnDisable to avoid double subscriptions
     }
@@ -243,6 +270,15 @@ public class UI_ClickerGame : UI_Base
         }
     }
 
+    private GameObject FindChildGameObjectOptional(string name)
+    {
+        try
+        {
+            return FindChildGameObject(name);
+        }
+        catch { return null; }
+    }
+
     private void UpdateGoldText()
     {
         if (_goldText == null || GameManager.Instance == null) return;
@@ -259,5 +295,19 @@ public class UI_ClickerGame : UI_Base
     {
         if (_goldPerSecText == null || GameManager.Instance == null) return;
         _goldPerSecText.text = GameManager.Instance.GoldPerSecond.ToString("N0");
+    }
+
+    private void UpdateCrystalText()
+    {
+        if (_crystalText == null || GameManager.Instance == null) return;
+        // Format: current crystal number
+        _crystalText.text = GameManager.Instance.Crystal.ToString("N0") + "\n" + ""; // newline as requested; second line left blank
+    }
+
+    private void UpdateCrystalPerMinText()
+    {
+        if (_crystalPerMinText == null || GameManager.Instance == null) return;
+        // Format: CPM value with short suffix '/m' on the same line (no newline)
+        _crystalPerMinText.text = $"{GameManager.Instance.CPM:N0}/m";
     }
 }
