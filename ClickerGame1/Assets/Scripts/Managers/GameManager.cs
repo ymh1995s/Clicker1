@@ -66,9 +66,10 @@ public class GameManager : Singleton<GameManager>
         set
         {
             _crystal = value;
-            // You can add an OnCrystalChanged event if needed
+            OnCrystalChanged?.Invoke();
         }
     }
+    public event Action OnCrystalChanged;
 
     [SerializeField] private int _cpm = 0; // crystals per minute
     public int CPM
@@ -552,7 +553,7 @@ public class GameManager : Singleton<GameManager>
         int stored = GetStoredGpcLevel(tier);
         int purchasesTier = Math.Max(0, stored - 1);
         double baseIncTier = (idxTier >= 0 && idxTier < UpgradeConfig.BaseGPSInc.Length) ? UpgradeConfig.BaseGPSInc[idxTier] : 0.0;
-        double growthTier = (idxTier >= 0 && idxTier < UpgradeConfig.GpcLevelGrowth.Length) ? UpgradeConfig.GpcLevelGrowth[idxTier] : 0.0;
+        double growthTier = (idxTier >= 0 && idxTier < UpgradeConfig.GpsLevelGrowth.Length) ? UpgradeConfig.GpsLevelGrowth[idxTier] : 0.0;
         double unlockMultTier = 1.0;
         if (_purchasedGPCItems != null && _purchasedGPCItems.TryGetValue(tier, out var boughtTier) && boughtTier)
             unlockMultTier = UpgradeConfig.ITEM_UNLOCK_BONUS;
@@ -579,6 +580,13 @@ public class GameManager : Singleton<GameManager>
         // Initialize other properties so any subscribers receive the initial values
         Gold = _gold;
         // GoldPerSecond already set by Recalculate
+
+        // Ensure we save on application quitting (covers normal quits)
+        try
+        {
+            Application.quitting += HandleApplicationQuitting;
+        }
+        catch { }
     }
 
     protected virtual void Start()
@@ -589,6 +597,55 @@ public class GameManager : Singleton<GameManager>
     protected virtual void Update()
     {
         // Update logic
+
+        // Handle Android back button (maps to KeyCode.Escape) to quit the application.
+        // This ensures pressing the hardware/software Back button on Android will exit the game.
+        // Keep this logic in GameManager so there's a single place to control app lifecycle behavior.
+        #if UNITY_ANDROID && !UNITY_EDITOR
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            // Save current game state before quitting. SaveManager.Save writes synchronously to disk.
+            try
+            {
+                SaveManager.Instance?.Save();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"GameManager: Save before quit failed - {ex}");
+            }
+
+            Debug.Log("Android back button pressed - quitting application.");
+            Application.Quit();
+        }
+        #else
+        // In editor or other platforms, do nothing here (prevents accidental quits during development)
+        #endif
+    }
+
+    private void HandleApplicationQuitting()
+    {
+        try
+        {
+            SaveManager.Instance?.Save();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"GameManager: HandleApplicationQuitting save failed - {ex}");
+        }
+    }
+
+    protected virtual void OnDisable()
+    {
+        try
+        {
+            Application.quitting -= HandleApplicationQuitting;
+        }
+        catch { }
+    }
+
+    protected virtual void OnDestroy()
+    {
+        // nothing extra here — quitting is handled by Application.quitting
     }
 }
 

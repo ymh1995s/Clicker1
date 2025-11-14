@@ -42,6 +42,7 @@ public class SaveManager : Singleton<SaveManager>
         public int gold;
         public int goldPerClick;
         public int goldPerSecond;
+        public int crystal; // persist crystals across sessions and rebirths
         public List<UpgradeEntry> gpcUpgrades = new List<UpgradeEntry>();
         public List<UpgradeEntry> gpsUpgrades = new List<UpgradeEntry>();
         public List<PurchasedEntry> purchasedGpcItems = new List<PurchasedEntry>();
@@ -83,6 +84,7 @@ public class SaveManager : Singleton<SaveManager>
                 data.gold = GameManager.Instance.Gold;
                 data.goldPerClick = GameManager.Instance.GoldPerClick;
                 data.goldPerSecond = GameManager.Instance.GoldPerSecond;
+                data.crystal = GameManager.Instance.Crystal; // save crystal
 
                 try
                 {
@@ -174,6 +176,13 @@ public class SaveManager : Singleton<SaveManager>
                 GameManager.Instance.GoldPerClick = data.goldPerClick;
                 GameManager.Instance.GoldPerSecond = data.goldPerSecond;
 
+                // Load crystal and ensure it persists across rebirths
+                try
+                {
+                    GameManager.Instance.Crystal = data.crystal;
+                }
+                catch { }
+
                 try
                 {
                     GameManager.Instance.GPCUpgrades.Clear();
@@ -264,6 +273,17 @@ public class SaveManager : Singleton<SaveManager>
     {
         try
         {
+            // Preserve crystals across delete (rebirth) operations
+            int preservedCrystal = 0;
+            try
+            {
+                if (_currentData != null)
+                    preservedCrystal = _currentData.crystal;
+                else if (GameManager.Instance != null)
+                    preservedCrystal = GameManager.Instance.Crystal;
+            }
+            catch { preservedCrystal = 0; }
+
             if (File.Exists(SaveFilePath))
             {
                 File.Delete(SaveFilePath);
@@ -288,6 +308,14 @@ public class SaveManager : Singleton<SaveManager>
                     {
                         initMethod.Invoke(GameManager.Instance, null);
                     }
+
+                    // Restore preserved crystal value and persist immediately
+                    try
+                    {
+                        GameManager.Instance.Crystal = preservedCrystal;
+                        Save();
+                    }
+                    catch { }
                 }
             }
             catch { }

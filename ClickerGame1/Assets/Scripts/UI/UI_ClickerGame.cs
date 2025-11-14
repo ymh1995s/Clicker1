@@ -52,20 +52,24 @@ public class UI_ClickerGame : UI_Base
     {
         base.Awake();
 
-        // Automatically connect serialized fields using FindChildGameObject
-        _upgradeButton = FindChildGameObject("UpgradeButton").GetComponent<Button>();
-        _charactersButton = FindChildGameObject("CharactersButton").GetComponent<Button>();
-        _bmButton = FindChildGameObject("BMButton").GetComponent<Button>();
-        _optionButton = FindChildGameObject("OptionButton").GetComponent<Button>();
-        _upgradeTab = FindChildGameObject("UpgradeTab");
-        _charactersTab = FindChildGameObject("CharactersTab");
-        _bmTab = FindChildGameObject("BMTab");
-        _optionTab = FindChildGameObject("OptionTab");
-        _gameArea = FindChildGameObject("GameArea");
+        // Automatically connect serialized fields using FindChildGameObject (use Optional variant to avoid exceptions)
+        var go = FindChildGameObjectOptional("UpgradeButton");
+        if (go != null) _upgradeButton = go.GetComponent<Button>();
+        go = FindChildGameObjectOptional("CharactersButton");
+        if (go != null) _charactersButton = go.GetComponent<Button>();
+        go = FindChildGameObjectOptional("BMButton");
+        if (go != null) _bmButton = go.GetComponent<Button>();
+        go = FindChildGameObjectOptional("OptionButton");
+        if (go != null) _optionButton = go.GetComponent<Button>();
+        var tmp = FindChildGameObjectOptional("UpgradeTab"); if (tmp != null) _upgradeTab = tmp;
+        tmp = FindChildGameObjectOptional("CharactersTab"); if (tmp != null) _charactersTab = tmp;
+        tmp = FindChildGameObjectOptional("BMTab"); if (tmp != null) _bmTab = tmp;
+        tmp = FindChildGameObjectOptional("OptionTab"); if (tmp != null) _optionTab = tmp;
+        var area = FindChildGameObjectOptional("GameArea"); if (area != null) _gameArea = area;
 
-        _goldPerClickText = FindChildGameObject("GoldPerClickText").GetComponent<TMP_Text>();
-        _goldPerSecText = FindChildGameObject("GoldPerSecText").GetComponent<TMP_Text>();
-        _goldText = FindChildGameObject("GoldText").GetComponent<TMP_Text>();
+        var t = FindChildGameObjectOptional("GoldPerClickText"); if (t != null) _goldPerClickText = t.GetComponent<TMP_Text>();
+        t = FindChildGameObjectOptional("GoldPerSecText"); if (t != null) _goldPerSecText = t.GetComponent<TMP_Text>();
+        t = FindChildGameObjectOptional("GoldText"); if (t != null) _goldText = t.GetComponent<TMP_Text>();
 
         // crystal texts (optional children)
         var ctGo = FindChildGameObjectOptional("CrystalText");
@@ -138,18 +142,30 @@ public class UI_ClickerGame : UI_Base
     {
         base.BindUIEvents();
 
-        // Bind buttons to their respective actions
-        _upgradeButton.onClick.RemoveAllListeners();
-        _upgradeButton.onClick.AddListener(() => ActivateTab(_upgradeTab));
+        // Bind buttons to their respective actions (null-checks to avoid runtime exceptions)
+        if (_upgradeButton != null)
+        {
+            _upgradeButton.onClick.RemoveAllListeners();
+            _upgradeButton.onClick.AddListener(() => ActivateTab(_upgradeTab));
+        }
 
-        _charactersButton.onClick.RemoveAllListeners();
-        _charactersButton.onClick.AddListener(() => ActivateTab(_charactersTab));
+        if (_charactersButton != null)
+        {
+            _charactersButton.onClick.RemoveAllListeners();
+            _charactersButton.onClick.AddListener(() => ActivateTab(_charactersTab));
+        }
 
-        _bmButton.onClick.RemoveAllListeners();
-        _bmButton.onClick.AddListener(() => ActivateTab(_bmTab));
+        if (_bmButton != null)
+        {
+            _bmButton.onClick.RemoveAllListeners();
+            _bmButton.onClick.AddListener(() => ActivateTab(_bmTab));
+        }
 
-        _optionButton.onClick.RemoveAllListeners();
-        _optionButton.onClick.AddListener(() => ActivateTab(_optionTab));
+        if (_optionButton != null)
+        {
+            _optionButton.onClick.RemoveAllListeners();
+            _optionButton.onClick.AddListener(() => ActivateTab(_optionTab));
+        }
 
         // Do NOT bind GameArea button here. Input is handled in Update to capture click position.
     }
@@ -177,6 +193,7 @@ public class UI_ClickerGame : UI_Base
             GameManager.Instance.OnGoldChanged += UpdateGoldText;
             GameManager.Instance.OnGoldPerClickChanged += UpdateGoldPerClickText;
             GameManager.Instance.OnGoldPerSecondChanged += UpdateGoldPerSecText;
+            GameManager.Instance.OnCrystalChanged += UpdateCrystalText; // subscribe to crystal changes
         }
     }
 
@@ -187,6 +204,7 @@ public class UI_ClickerGame : UI_Base
             GameManager.Instance.OnGoldChanged -= UpdateGoldText;
             GameManager.Instance.OnGoldPerClickChanged -= UpdateGoldPerClickText;
             GameManager.Instance.OnGoldPerSecondChanged -= UpdateGoldPerSecText;
+            GameManager.Instance.OnCrystalChanged -= UpdateCrystalText; // unsubscribe
         }
     }
 
@@ -301,7 +319,8 @@ public class UI_ClickerGame : UI_Base
     {
         if (_crystalText == null || GameManager.Instance == null) return;
         // Format: current crystal number
-        _crystalText.text = GameManager.Instance.Crystal.ToString("N0") + "\n" + ""; // newline as requested; second line left blank
+        _crystalText.text = GameManager.Instance.Crystal.ToString("N0");
+        // removed newline to keep single-line display
     }
 
     private void UpdateCrystalPerMinText()
