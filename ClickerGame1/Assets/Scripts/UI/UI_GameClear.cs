@@ -257,6 +257,22 @@ public class UI_GameClear : UI_Base
             Debug.LogWarning($"UI_GameClear: Failed to award clear crystals - {ex}");
         }
 
+        // Persist save immediately after rebirth and crystal reward
+        try
+        {
+            if (SaveManager.Instance != null)
+            {
+                SaveManager.Instance.Save();
+#if UNITY_EDITOR
+                Debug.Log("UI_GameClear: SaveManager.Save() called after rebirth and crystal award.");
+#endif
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"UI_GameClear: Failed to save after rebirth - {ex}");
+        }
+
         // small delay to ensure state settled
         yield return new WaitForSeconds(0.1f);
 
