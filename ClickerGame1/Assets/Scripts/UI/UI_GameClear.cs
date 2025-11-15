@@ -133,6 +133,39 @@ public class UI_GameClear : UI_Base
 
         Debug.Log("Game cleared: required gold consumed.");
 
+        // Trigger UI_Animation's game clear clip to play immediately (non-looping)
+        try
+        {
+            var anim = UnityEngine.Object.FindObjectOfType<UI_Animation>(true);
+            if (anim != null)
+            {
+                // Play the clip and when finished perform rebirth
+                anim.PlayGameClearImmediate(() =>
+                {
+                    // After the animation completes, perform rebirth and save
+                    try
+                    {
+                        if (GameManager.Instance != null)
+                        {
+                            GameManager.Instance.Rebirth();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"UI_GameClear: Rebirth failed - {ex}");
+                    }
+                });
+            }
+            else
+            {
+                Debug.LogWarning("UI_GameClear: UI_Animation instance not found. Cannot play game-clear clip.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"UI_GameClear: Failed to play game-clear animation - {ex}");
+        }
+
         // TODO: Trigger actual game-clear flow (show UI, load next scene, grant rewards, etc.)
     }
 }

@@ -37,6 +37,13 @@ public class SaveManager : Singleton<SaveManager>
     }
 
     [Serializable]
+    private class CooldownEntry
+    {
+        public string key;
+        public float remaining;
+    }
+
+    [Serializable]
     private class SaveData
     {
         public int gold;
@@ -47,6 +54,7 @@ public class SaveManager : Singleton<SaveManager>
         public List<UpgradeEntry> gpsUpgrades = new List<UpgradeEntry>();
         public List<PurchasedEntry> purchasedGpcItems = new List<PurchasedEntry>();
         public List<CharacterEntry> characterCollections = new List<CharacterEntry>();
+        public List<CooldownEntry> cooldowns = new List<CooldownEntry>();
     }
 
     // Keep loaded save data in-memory so other systems can query/update it.
@@ -109,6 +117,18 @@ public class SaveManager : Singleton<SaveManager>
                     foreach (var kv in GameManager.Instance.PurchasedGPCItems)
                     {
                         data.purchasedGpcItems.Add(new PurchasedEntry { key = kv.Key.ToString(), purchased = kv.Value });
+                    }
+                }
+                catch { }
+
+                // Save remaining cooldowns for each GPC tier so they can be restored on load
+                try
+                {
+                    foreach (EGPCUpgradeType t in Enum.GetValues(typeof(EGPCUpgradeType)))
+                    {
+                        float rem = 0f;
+                        try { rem = GameManager.Instance.GetRemainingCooldown(t); } catch { rem = 0f; }
+                        data.cooldowns.Add(new CooldownEntry { key = t.ToString(), remaining = rem });
                     }
                 }
                 catch { }
@@ -222,6 +242,26 @@ public class SaveManager : Singleton<SaveManager>
                         if (Enum.TryParse(typeof(EGPCUpgradeType), p.key, out var parsed))
                         {
                             GameManager.Instance.PurchasedGPCItems[(EGPCUpgradeType)parsed] = p.purchased;
+                        }
+                    }
+                }
+                catch { }
+
+                // Restore cooldown remaining times if saved
+                try
+                {
+                    if (data.cooldowns != null)
+                    {
+                        foreach (var c in data.cooldowns)
+                        {
+                            if (Enum.TryParse(typeof(EGPCUpgradeType), c.key, out var parsed))
+                            {
+                                try
+                                {
+                                    GameManager.Instance.SetRemainingCooldown((EGPCUpgradeType)parsed, c.remaining);
+                                }
+                                catch { }
+                            }
                         }
                     }
                 }

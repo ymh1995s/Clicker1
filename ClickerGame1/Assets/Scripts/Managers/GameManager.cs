@@ -325,6 +325,14 @@ public class GameManager : Singleton<GameManager>
         return (float)Math.Max(0.0, rem);
     }
 
+    // Set remaining cooldown in seconds for a tier (used by Save/Load to restore cooldowns)
+    public void SetRemainingCooldown(EGPCUpgradeType tier, float remainingSeconds)
+    {
+        EnsureTierCooldownsInitialized();
+        double rem = Math.Max(0.0f, remainingSeconds);
+        _tierNextAvailableTime[tier] = Time.time + rem;
+    }
+
     // Recalculate GoldPerClick using linear-per-level increment formula from UpgradeSystem_Test
     public void RecalculateGoldPerClick()
     {
@@ -646,6 +654,75 @@ public class GameManager : Singleton<GameManager>
     protected virtual void OnDestroy()
     {
         // nothing extra here — quitting is handled by Application.quitting
+    }
+
+    /// <summary>
+    /// Rebirth/Reset game progress while preserving crystals and character collection states.
+    /// Resets gold, GPC/GPS upgrades and cooldowns to initial values, then reapplies character bonuses.
+    /// Calls SaveManager.Save() to persist the new state.
+    /// </summary>
+    public void Rebirth()
+    {
+        try
+        {
+            // Preserve crystals and character stars
+            int preservedCrystal = 0;
+            try { preservedCrystal = this.Crystal; } catch { preservedCrystal = 0; }
+
+            var preservedChars = new Dictionary<string, int>(_characterStars, StringComparer.OrdinalIgnoreCase);
+
+            // Reset upgrade levels to defaults (1)
+            foreach (EGPCUpgradeType t in Enum.GetValues(typeof(EGPCUpgradeType)))
+            {
+                _gpcUpgrades[t] = 1;
+            }
+            foreach (EGPSUpgradeType t in Enum.GetValues(typeof(EGPSUpgradeType)))
+            {
+                _gpsUpgrades[t] = 1;
+            }
+
+            // Reset purchased items
+            foreach (EGPCUpgradeType t in Enum.GetValues(typeof(EGPCUpgradeType)))
+            {
+                _purchasedGPCItems[t] = false;
+            }
+
+            // Reset cooldown tracking
+            _tierNextAvailableTime.Clear();
+            EnsureTierCooldownsInitialized();
+
+            // Reset gold and base click/gps values to base from UpgradeConfig
+            try
+            {
+                Gold = 0; // will set start gold from characters below
+                GoldPerClick = (int)Math.Max(0, (int)UpgradeConfig.BaseClickValue);
+                GoldPerSecond = 0;
+            }
+            catch { Gold = 0; GoldPerClick = 0; GoldPerSecond = 0; }
+
+            // Restore preserved character stars and recalc character effects
+            _characterStars = new Dictionary<string, int>(preservedChars, StringComparer.OrdinalIgnoreCase);
+            RecalculateCharacterEffects(); // sets StartGoldFromCharacters and applies bonuses to GPC/GPS
+
+            // Give starting gold influenced by characters if available
+            try
+            {
+                Gold = StartGoldFromCharacters;
+            }
+            catch { Gold = 0; }
+
+            // Restore preserved crystal
+            try { Crystal = preservedCrystal; } catch { }
+
+            // Persist immediately
+            try { SaveManager.Instance?.Save(); } catch { }
+
+            Debug.Log("GameManager: Rebirth completed. Progress reset while preserving crystals and characters.");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"GameManager: Rebirth failed - {ex}");
+        }
     }
 }
 
