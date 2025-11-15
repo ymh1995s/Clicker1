@@ -27,6 +27,23 @@ public class CharacterColloection : MonoBehaviour
     [SerializeField]
     private CharacterId collectionIdEnum = CharacterId.A; // choose in Inspector
 
+    // Centralized per-star bonus tables (index = star count 0..5)
+    [Header("Character Bonuses (per-star tables)")]
+    [Tooltip("Start gold added for characters by star count. Index 0..5 (0 = no stars)")]
+    [SerializeField] private int[] StartGoldByStars = new int[] { 0, 10000, 12000, 15000, 17000, 20000 };
+
+    [Tooltip("GPC percent bonus for characters by star count. Use 0.10 for +10% etc. Index 0..5")]
+    [SerializeField] private float[] GpcPercentByStars = new float[] { 0f, 0.10f, 0.12f, 0.15f, 0.17f, 0.20f };
+
+    [Tooltip("GPS percent bonus for characters by star count. If left empty, GPC table is used.")]
+    [SerializeField] private float[] GpsPercentByStars = new float[] { 0f, 0.10f, 0.12f, 0.15f, 0.17f, 0.20f };
+
+    [Tooltip("CPM (crystals per minute) added by characters by star count. Index 0..5")]
+    [SerializeField] private int[] CpmByStars = new int[] { 0, 1, 2, 3, 4, 5 };
+
+    [Tooltip("Clear crystal reward added by characters by star count. Index 0..5")]
+    [SerializeField] private int[] ClearCrystalByStars = new int[] { 0, 100, 110, 120, 130, 150 };
+
     // Provide a string view for existing SaveManager integration
     public string collectionId => collectionIdEnum.ToString();
 
@@ -226,59 +243,42 @@ public class CharacterColloection : MonoBehaviour
 
     private int GetStartGoldForStars(int s)
     {
-        switch (s)
-        {
-            case 1: return 1000;
-            case 2: return 1200;
-            case 3: return 1500;
-            case 4: return 1700;
-            case 5: return 2000;
-            default: return 0;
-        }
+        if (StartGoldByStars == null || StartGoldByStars.Length == 0) return 0;
+        int idx = Mathf.Clamp(s, 0, StartGoldByStars.Length - 1);
+        return StartGoldByStars[idx];
     }
 
     private double GetGpcPercentForStars(int s)
     {
-        switch (s)
-        {
-            case 1: return 0.10;
-            case 2: return 0.12;
-            case 3: return 0.15;
-            case 4: return 0.17;
-            case 5: return 0.20;
-            default: return 0.0;
-        }
+        if (GpcPercentByStars == null || GpcPercentByStars.Length == 0) return 0.0;
+        int idx = Mathf.Clamp(s, 0, GpcPercentByStars.Length - 1);
+        return (double)GpcPercentByStars[idx];
     }
 
     private double GetGpsPercentForStars(int s)
     {
+        if (GpsPercentByStars != null && GpsPercentByStars.Length > 0)
+        {
+            int idx = Mathf.Clamp(s, 0, GpsPercentByStars.Length - 1);
+            return (double)GpsPercentByStars[idx];
+        }
+
+        // fallback to GPC mapping if GPS table not provided
         return GetGpcPercentForStars(s);
     }
 
     private int GetCpmForStars(int s)
     {
-        switch (s)
-        {
-            case 1: return 5;
-            case 2: return 6;
-            case 3: return 8;
-            case 4: return 9;
-            case 5: return 10;
-            default: return 0;
-        }
+        if (CpmByStars == null || CpmByStars.Length == 0) return 0;
+        int idx = Mathf.Clamp(s, 0, CpmByStars.Length - 1);
+        return CpmByStars[idx];
     }
 
     private int GetClearCrystalForStars(int s)
     {
-        switch (s)
-        {
-            case 1: return 100;
-            case 2: return 120;
-            case 3: return 150;
-            case 4: return 170;
-            case 5: return 200;
-            default: return 0;
-        }
+        if (ClearCrystalByStars == null || ClearCrystalByStars.Length == 0) return 0;
+        int idx = Mathf.Clamp(s, 0, ClearCrystalByStars.Length - 1);
+        return ClearCrystalByStars[idx];
     }
 
     // Called externally (e.g. on click events) to add a star.
