@@ -260,6 +260,24 @@ public class UI_GameClear : UI_Base
         // small delay to ensure state settled
         yield return new WaitForSeconds(0.1f);
 
+        // --- NEW: remove animation visuals (UI_Animation) BEFORE fading back in so the sequence is:
+        // animation play -> fade out -> fade out complete -> animation removed -> fade in -> notify/start game
+        try
+        {
+            var anim = UnityEngine.Object.FindObjectOfType<UI_Animation>(true);
+            if (anim != null)
+            {
+                // Clear held last-frame and hide visuals immediately
+                anim.ClearHeldGameClearVisual();
+                // Optionally disable the animation GameObject so it won't resume
+                try { anim.gameObject.SetActive(false); } catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"UI_GameClear: Failed to remove animation visuals - {ex}");
+        }
+
         // Fade back in
         if (_rootCanvasGroup != null)
             yield return StartCoroutine(FadeCanvasGroup(_rootCanvasGroup, 0f, 1f, _canvasFadeDuration * 2f));

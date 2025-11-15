@@ -538,4 +538,42 @@ public class UI_Animation : MonoBehaviour
 
         _playCoroutine = null;
     }
+
+    // New public helper to allow external callers to clear the held last-frame and hide visuals
+    // This is safe to call after a game-clear clip has finished with holdLastFrame=true.
+    public void ClearHeldGameClearVisual()
+    {
+        try
+        {
+            // If a paused/held video is present, stop it and clear handlers
+            if (_videoPlayer != null)
+            {
+                if (_currentOnFinished != null)
+                {
+                    try { _videoPlayer.loopPointReached -= _currentOnFinished; } catch { }
+                    _currentOnFinished = null;
+                }
+                try { _videoPlayer.Stop(); } catch { }
+            }
+        }
+        catch { }
+
+        try
+        {
+            // Stop any clip coroutine that's holding a frame
+            if (_currentClipCoroutine != null)
+            {
+                try { StopCoroutine(_currentClipCoroutine); } catch { }
+                _currentClipCoroutine = null;
+            }
+        }
+        catch { }
+
+        try
+        {
+            if (_fadeGroup != null)
+                _fadeGroup.alpha = 0f;
+        }
+        catch { }
+    }
 }
