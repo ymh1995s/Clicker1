@@ -115,6 +115,9 @@ public class UI_Upgrade : UI_Base
         base.Start();
         BindUIEvents();
         RefreshUI();
+
+        // After start, try to restore cooldown visual if GameManager already has a remaining cooldown
+        TryRestoreCooldownVisual();
     }
 
     void OnEnable()
@@ -128,6 +131,17 @@ public class UI_Upgrade : UI_Base
             GameManager.Instance.OnGoldPerClickChanged += RefreshUI;
             GameManager.Instance.OnGoldPerSecondChanged += RefreshUI;
         }
+
+        // Listen for save load completion so we can restore cooldown visuals if load happens after this UI enabled
+        if (SaveManager.Instance != null)
+            SaveManager.Instance.OnLoaded += OnSaveLoaded;
+
+        // Listen for rebirth complete so we can immediately clear cooldown visuals
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnRebirthSequenceComplete += OnRebirthSequenceComplete;
+
+        // Attempt immediate restore (covers case where save already loaded earlier)
+        TryRestoreCooldownVisual();
     }
 
     void OnDisable()
@@ -140,6 +154,12 @@ public class UI_Upgrade : UI_Base
             GameManager.Instance.OnGoldPerClickChanged -= RefreshUI;
             GameManager.Instance.OnGoldPerSecondChanged -= RefreshUI;
         }
+
+        if (SaveManager.Instance != null)
+            SaveManager.Instance.OnLoaded -= OnSaveLoaded;
+
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnRebirthSequenceComplete -= OnRebirthSequenceComplete;
     }
 
     protected override void BindUIEvents()
@@ -155,6 +175,8 @@ public class UI_Upgrade : UI_Base
     protected override void RefreshUI()
     {
         base.RefreshUI();
+        if (_clickButton == null) return;
+
         // The upgrade button should only be interactable if the corresponding item has been purchased
         bool purchased = false;
         if (GameManager.Instance != null && GameManager.Instance.PurchasedGPCItems != null)
@@ -162,10 +184,12 @@ public class UI_Upgrade : UI_Base
             GameManager.Instance.PurchasedGPCItems.TryGetValue(_gpcUpgradeType, out purchased);
         }
 
-        // If a recharge is in progress, button must remain non-interactable
-        bool rechargeInProgress = _rechargeCoroutine != null;
+        // If GameManager says tier is on cooldown, treat as not available
+        bool tierAvailable = true;
+        if (GameManager.Instance != null)
+            tierAvailable = GameManager.Instance.IsTierAvailable(_gpcUpgradeType);
 
-        _clickButton.interactable = purchased && !rechargeInProgress;
+        _clickButton.interactable = purchased && tierAvailable;
 
         var colors = _clickButton.colors;
         colors.normalColor = (_clickButton.interactable) ? Color.white : Color.grey;
@@ -289,12 +313,13 @@ public class UI_Upgrade : UI_Base
         if (GameManager.Instance != null)
             cooldown = GameManager.Instance.GetCooldownForTier(_gpcUpgradeType);
 
-        StartRechargeVisual(cooldown);
+        StartRechargeVisual(cooldown, 0f);
 
         RefreshUI();
     }
 
-    private void StartRechargeVisual(float duration)
+    // Updated StartRechargeVisual to allow starting from a non-zero fill to reflect saved progress
+    private void StartRechargeVisual(float duration, float startFill = 0f)
     {
         if (_clickButton == null)
             return;
@@ -318,7 +343,7 @@ public class UI_Upgrade : UI_Base
             btnImage.enabled = false;
 
         _blurImage.type = Image.Type.Filled;
-        _blurImage.fillAmount = 0f;
+        _blurImage.fillAmount = Mathf.Clamp01(startFill);
         _blurImage.gameObject.SetActive(true);
 
         // Make sure button is not interactable during recharge
@@ -327,17 +352,19 @@ public class UI_Upgrade : UI_Base
         // store duration into editor mirror so inspector shows it
         _editorCooldown = duration;
 
-        _rechargeCoroutine = StartCoroutine(RechargeCoroutine(duration));
+        _rechargeCoroutine = StartCoroutine(RechargeCoroutine(duration, startFill));
         RefreshUI();
     }
 
-    private IEnumerator RechargeCoroutine(float duration)
+    private IEnumerator RechargeCoroutine(float duration, float startFill = 0f)
     {
         float elapsed = 0f;
+        float clampedStart = Mathf.Clamp01(startFill);
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / Math.Max(0.0001f, duration));
+            float t = clampedStart + (elapsed / Math.Max(0.0001f, duration)) * (1f - clampedStart);
+            t = Mathf.Clamp01(t);
             if (_blurImage != null)
                 _blurImage.fillAmount = t;
             yield return null;
@@ -359,6 +386,75 @@ public class UI_Upgrade : UI_Base
             GameManager.Instance.PurchasedGPCItems.TryGetValue(_gpcUpgradeType, out purchased);
 
         _clickButton.interactable = purchased;
+        RefreshUI();
+    }
+
+    // Try to restore cooldown visual from GameManager state (called on Start, OnEnable and when SaveManager signals load)
+    private void TryRestoreCooldownVisual()
+    {
+        if (GameManager.Instance == null) return;
+        if (_rechargeCoroutine != null) return; // already running
+
+        float remaining = 0f;
+        try { remaining = GameManager.Instance.GetRemainingCooldown(_gpcUpgradeType); } catch { remaining = 0f; }
+        if (remaining <= 0f)
+        {
+            // nothing to restore
+            if (_blurImage != null)
+                _blurImage.gameObject.SetActive(false);
+            return;
+        }
+
+        // We have remaining time; compute how far along the cooldown already is relative to full duration
+        float total = 0f;
+        try { total = GameManager.Instance.GetCooldownForTier(_gpcUpgradeType); } catch { total = remaining; }
+        float startFill = 0f;
+        if (total > 0f)
+            startFill = Mathf.Clamp01(1f - (remaining / total));
+
+        StartRechargeVisual(remaining, startFill);
+    }
+
+    private void OnSaveLoaded()
+    {
+        // when save finishes loading, ensure UI matches cooldown state
+        TryRestoreCooldownVisual();
+        RefreshUI();
+    }
+
+    // Called when rebirth sequence completes. Clear any running recharge visuals so upgrade becomes immediately usable.
+    private void OnRebirthSequenceComplete()
+    {
+        // Stop recharge coroutine and clear visuals
+        if (_rechargeCoroutine != null)
+        {
+            try { StopCoroutine(_rechargeCoroutine); } catch { }
+            _rechargeCoroutine = null;
+        }
+
+        if (_blurImage != null)
+        {
+            _blurImage.gameObject.SetActive(false);
+            _blurImage.fillAmount = 0f;
+        }
+
+        var btnImage = _clickButton != null ? _clickButton.GetComponent<Image>() : null;
+        if (btnImage != null)
+            btnImage.enabled = true;
+
+        // After rebirth, tiers should be available immediately; ensure button interactable follows purchase state
+        bool purchased = false;
+        if (GameManager.Instance != null && GameManager.Instance.PurchasedGPCItems != null)
+            GameManager.Instance.PurchasedGPCItems.TryGetValue(_gpcUpgradeType, out purchased);
+
+        if (_clickButton != null)
+        {
+            _clickButton.interactable = purchased;
+            var colors = _clickButton.colors;
+            colors.normalColor = (_clickButton.interactable) ? Color.white : Color.grey;
+            _clickButton.colors = colors;
+        }
+
         RefreshUI();
     }
 
