@@ -45,6 +45,13 @@ public class UI_Animation : MonoBehaviour
     private bool _isGameClearPlaying = false;
     private int _lastPlayedIndex = -1;
     private Action _onGameClearFinished = null;
+    private bool _pendingPurchaseChange = false;
+    private bool _pendingHasPurchases = false;
+    private bool _startLoopPending = false;
+    private Coroutine _currentClipCoroutine = null;
+    private UnityEngine.Video.VideoPlayer.EventHandler _currentOnFinished = null;
+    private bool _suppressAfterRebirth = false;
+    private bool _rebirthSequenceCompleted = false;
 
     private void Awake()
     {
@@ -118,6 +125,59 @@ public class UI_Animation : MonoBehaviour
         StartLoopIfNeeded();
     }
 
+    private void OnEnable()
+    {
+        // Subscribe to purchase changes so we can start/stop immediately
+        try { if (GameManager.Instance != null) GameManager.Instance.OnPurchasedChanged += OnPurchasedChanged; } catch { }
+        try { if (GameManager.Instance != null) GameManager.Instance.OnRebirthSequenceComplete += OnRebirthSequenceComplete; } catch { }
+    }
+
+    private void OnDisable()
+    {
+        try { if (GameManager.Instance != null) GameManager.Instance.OnPurchasedChanged -= OnPurchasedChanged; } catch { }
+        try { if (GameManager.Instance != null) GameManager.Instance.OnRebirthSequenceComplete -= OnRebirthSequenceComplete; } catch { }
+        StopLoop();
+        if (_pollCoroutine != null) { try { StopCoroutine(_pollCoroutine); } catch { } _pollCoroutine = null; }
+    }
+
+    private void OnRebirthSequenceComplete()
+    {
+        // Mark that rebirth sequence finished and suppress immediate loop start for one frame
+        _rebirthSequenceCompleted = true;
+        _suppressAfterRebirth = true;
+        StartCoroutine(ClearRebirthSuppressionNextFrame());
+    }
+
+    private IEnumerator ClearRebirthSuppressionNextFrame()
+    {
+        yield return null;
+        _suppressAfterRebirth = false;
+    }
+
+    private void OnPurchasedChanged(EGPCUpgradeType tier, bool purchased)
+    {
+        // If a game-clear clip is playing, defer handling to avoid stopping playback mid-clip
+        var available = GetPurchasedItemIndices();
+        bool hasAny = available != null && available.Count > 0;
+        if (_isGameClearPlaying)
+        {
+            _pendingPurchaseChange = true;
+            _pendingHasPurchases = hasAny;
+            return;
+        }
+
+        // If any purchase exists, ensure display and loop; if none remain, hide immediately
+        if (hasAny)
+        {
+            ShowDisplay();
+            StartLoopIfNeeded();
+        }
+        else
+        {
+            HideDisplayImmediate();
+        }
+    }
+
     private IEnumerator PollForPurchases()
     {
         while (true)
@@ -137,12 +197,19 @@ public class UI_Animation : MonoBehaviour
 
     private void StartLoopIfNeeded()
     {
+        if (_suppressAfterRebirth) return;
         if (_loopCoroutine != null) return;
         var available = GetPurchasedItemIndices();
-        if (available != null && available.Count > 0)
+        if (available == null || available.Count == 0) return;
+
+        // If a clip is currently playing (non-gameclear), defer starting the loop until it finishes
+        if (_videoPlayer != null && _videoPlayer.isPlaying)
         {
-            _loopCoroutine = StartCoroutine(ItemLoopCoroutine());
+            _startLoopPending = true;
+            return;
         }
+
+        _loopCoroutine = StartCoroutine(ItemLoopCoroutine());
     }
 
     private void StopLoop()
@@ -156,8 +223,18 @@ public class UI_Animation : MonoBehaviour
 
     private void ShowDisplay()
     {
+        // If a clip is currently playing, do not reset alpha (avoid interrupting visibility)
         if (_fadeGroup != null)
-            _fadeGroup.alpha = 0f; // will fade in when clip starts
+        {
+            if (_videoPlayer != null && _videoPlayer.isPlaying)
+            {
+                // keep current alpha
+            }
+            else
+            {
+                _fadeGroup.alpha = 0f; // will fade in when clip starts
+            }
+        }
         // Ensure component enabled so coroutines run
         enabled = true;
     }
@@ -225,21 +302,28 @@ public class UI_Animation : MonoBehaviour
 
             _lastPlayedIndex = pick;
 
-            // Play clip and wait for completion
-            yield return StartCoroutine(PlayClipCoroutine(Clips[pick]));
+            // Play clip and wait for completion (do not force-stop current video)
+            _currentClipCoroutine = StartCoroutine(PlayClipCoroutine(Clips[pick], false));
+            yield return _currentClipCoroutine;
+            _currentClipCoroutine = null;
 
             // small delay between clips
             yield return new WaitForSeconds(0.2f);
         }
     }
 
-    private IEnumerator PlayClipCoroutine(VideoClip clip)
+    private IEnumerator PlayClipCoroutine(VideoClip clip, bool forceStop = false, bool holdLastFrame = false)
     {
         if (clip == null || _videoPlayer == null)
             yield break;
 
-        // Stop any currently playing video
-        try { _videoPlayer.Stop(); } catch { }
+        // Stop any currently playing video only if forced (e.g. game-clear interrupt)
+        if (forceStop)
+        {
+            try { if (_videoPlayer.isPlaying) _videoPlayer.Stop(); } catch { }
+        }
+
+        // track current clip coroutine set by caller
 
         _videoPlayer.clip = clip;
         _videoPlayer.isLooping = false;
@@ -261,22 +345,83 @@ public class UI_Animation : MonoBehaviour
             yield return StartCoroutine(FadeCanvasGroup(_fadeGroup, 0f, 1f, _fadeDuration));
 
         // Determine playback time and initiate fade out before end
-        float duration = (float)clip.length;
+        float duration = (float)Math.Max(0.0, clip.length);
         float timeUntilFadeOut = Mathf.Max(0f, duration - _fadeDuration);
 
+        // Use loopPointReached as authoritative end signal; also use time to start fade-out early
+        bool finished = false;
+        UnityEngine.Video.VideoPlayer.EventHandler onFinished = (vp) => { finished = true; };
+        try { _videoPlayer.loopPointReached += onFinished; _currentOnFinished = onFinished; } catch { }
+
         float elapsed = 0f;
-        while (elapsed < timeUntilFadeOut)
+        if (duration > 0f)
         {
-            elapsed += Time.deltaTime;
-            yield return null;
+            // Wait until it's time to fade out
+            while (!_videoPlayer.isPrepared || _videoPlayer.frame <= 0) // ensure frames flow
+            {
+                // give time for first frame
+                yield return null;
+            }
+
+            elapsed = 0f;
+            while (elapsed < timeUntilFadeOut && !finished)
+            {
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            // Start fade out over fade duration only if not holding last frame
+            if (_fadeGroup != null && !finished && !holdLastFrame)
+                yield return StartCoroutine(FadeCanvasGroup(_fadeGroup, 1f, 0f, _fadeDuration));
+
+            // Wait until playback actually finishes (loopPointReached)
+            float safety = duration + 2f; // extra buffer
+            float waited = 0f;
+            while (!finished && waited < safety)
+            {
+                waited += Time.deltaTime;
+                yield return null;
+            }
+        }
+        else
+        {
+            // Unknown duration: wait for loopPointReached or until a timeout
+            float waited = 0f;
+            float timeout = _prepareTimeout + 10f;
+            while (!finished && waited < timeout)
+            {
+                waited += Time.deltaTime;
+                yield return null;
+            }
         }
 
-        // Fade out
-        if (_fadeGroup != null)
-            yield return StartCoroutine(FadeCanvasGroup(_fadeGroup, 1f, 0f, _fadeDuration));
+        // If holding last frame, pause instead of stopping and do not clear alpha
+        if (holdLastFrame)
+        {
+            try { _videoPlayer.Pause(); } catch { }
+        }
+        else
+        {
+            // Ensure fade is fully off
+            if (_fadeGroup != null)
+                _fadeGroup.alpha = 0f;
 
-        // Stop video
-        try { _videoPlayer.Stop(); } catch { }
+            // Stop video
+            try { _videoPlayer.Stop(); } catch { }
+        }
+
+        // Unsubscribe
+        try { _videoPlayer.loopPointReached -= onFinished; } catch { }
+        if (_currentOnFinished == onFinished) _currentOnFinished = null;
+
+        // If a loop start was requested while this clip played, start it now
+        if (_startLoopPending)
+        {
+            _startLoopPending = false;
+            StartLoopIfNeeded();
+        }
+
+        _currentClipCoroutine = null;
 
         yield break;
     }
@@ -309,8 +454,31 @@ public class UI_Animation : MonoBehaviour
             return;
         }
 
-        // Stop any running play coroutine
-        if (_playCoroutine != null) StopCoroutine(_playCoroutine);
+        // Stop any running play coroutine (game-clear) first
+        if (_playCoroutine != null)
+        {
+            try { StopCoroutine(_playCoroutine); } catch { }
+            _playCoroutine = null;
+        }
+
+        // If a regular clip is currently playing, stop it and remove its handlers so it cannot resume or invoke callbacks
+        if (_currentClipCoroutine != null)
+        {
+            try { StopCoroutine(_currentClipCoroutine); } catch { }
+            _currentClipCoroutine = null;
+        }
+        if (_currentOnFinished != null && _videoPlayer != null)
+        {
+            try { _videoPlayer.loopPointReached -= _currentOnFinished; } catch { }
+            _currentOnFinished = null;
+        }
+        // stop playback immediately
+        try { _videoPlayer?.Stop(); } catch { }
+
+        // Clear pending loop/start flags so previous logic won't run
+        _startLoopPending = false;
+        _pendingPurchaseChange = false;
+        _pendingHasPurchases = false;
 
         _onGameClearFinished = onFinished;
         // Signal game clear playing and start the sequence
@@ -328,19 +496,16 @@ public class UI_Animation : MonoBehaviour
             _loopCoroutine = null;
         }
 
-        yield return StartCoroutine(PlayClipCoroutine(Clips[5]));
+        // Reset rebirth completion flag before invoking callback
+        _rebirthSequenceCompleted = false;
+
+        // Play game clear and hold on the last frame so UI can fade out while the last frame remains visible
+        yield return StartCoroutine(PlayClipCoroutine(Clips[5], true, true));
 
         // finished game clear
         _isGameClearPlaying = false;
 
-        // resume loop if there are purchased items
-        var purchased = GetPurchasedItemIndices();
-        if (purchased != null && purchased.Count > 0)
-            _loopCoroutine = StartCoroutine(ItemLoopCoroutine());
-        else
-            HideDisplayImmediate();
-
-        // invoke callback after playback completes
+        // invoke callback (UI will run fade/rebirth sequence)
         try
         {
             _onGameClearFinished?.Invoke();
@@ -352,7 +517,25 @@ public class UI_Animation : MonoBehaviour
         finally
         {
             _onGameClearFinished = null;
-            _playCoroutine = null;
         }
+
+        // Wait for rebirth sequence to complete (signalled by GameManager.OnRebirthSequenceComplete)
+        float wait = 0f;
+        float timeout = 10f; // safety timeout
+        while (!_rebirthSequenceCompleted && wait < timeout)
+        {
+            wait += Time.deltaTime;
+            yield return null;
+        }
+        _rebirthSequenceCompleted = false;
+
+        // After rebirth sequence, check purchases and resume or hide
+        var purchased = GetPurchasedItemIndices();
+        if (purchased != null && purchased.Count > 0 && !_suppressAfterRebirth)
+            _loopCoroutine = StartCoroutine(ItemLoopCoroutine());
+        else
+            HideDisplayImmediate();
+
+        _playCoroutine = null;
     }
 }

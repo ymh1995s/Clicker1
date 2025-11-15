@@ -173,7 +173,16 @@ public class UI_ItemBuy : UI_Base
         // updated gold value.
 
         // Mark purchased (one-time unlock)
-        GameManager.Instance.PurchasedGPCItems[_gpcUpgradeType] = true;
+        // Use GameManager API to set purchase and notify listeners
+        try
+        {
+            GameManager.Instance.SetPurchasedItem(_gpcUpgradeType, true);
+        }
+        catch
+        {
+            // fallback
+            GameManager.Instance.PurchasedGPCItems[_gpcUpgradeType] = true;
+        }
 
         // Recalculate derived stats so purchase unlocks apply (GPC and GPS) BEFORE changing gold
         GameManager.Instance.RecalculateGoldPerClick();

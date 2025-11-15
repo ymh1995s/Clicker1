@@ -4,6 +4,7 @@
 using System;
 using UnityEditor;
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using ClickerGame; // use UpgradeConfig from UpgradeSystem
@@ -18,6 +19,9 @@ public enum EGPSUpgradeType { Tier1, Tier2, Tier3, Tier4, Tier5, Tier6 }
 
 public class GameManager : Singleton<GameManager>
 {
+    // Notification suppression used during batch updates (e.g. Rebirth)
+    private bool _suppressNotifications = false;
+
     // Current gold amount
     [SerializeField] private int _gold;
     public int Gold
@@ -26,7 +30,7 @@ public class GameManager : Singleton<GameManager>
         set
         {
             _gold = value;
-            OnGoldChanged?.Invoke();
+            if (!_suppressNotifications) OnGoldChanged?.Invoke();
         }
     }
     public event Action OnGoldChanged;
@@ -40,7 +44,7 @@ public class GameManager : Singleton<GameManager>
         set
         {
             _goldPerClick = value;
-            OnGoldPerClickChanged?.Invoke();
+            if (!_suppressNotifications) OnGoldPerClickChanged?.Invoke();
         }
     }
     public event Action OnGoldPerClickChanged;
@@ -53,7 +57,7 @@ public class GameManager : Singleton<GameManager>
         set
         {
             _goldPerSecond = value;
-            OnGoldPerSecondChanged?.Invoke();
+            if (!_suppressNotifications) OnGoldPerSecondChanged?.Invoke();
         }
     }
     public event Action OnGoldPerSecondChanged;
@@ -66,7 +70,7 @@ public class GameManager : Singleton<GameManager>
         set
         {
             _crystal = value;
-            OnCrystalChanged?.Invoke();
+            if (!_suppressNotifications) OnCrystalChanged?.Invoke();
         }
     }
     public event Action OnCrystalChanged;
@@ -122,7 +126,8 @@ public class GameManager : Singleton<GameManager>
             {
                 case "A":
                 case "B":
-                    _startGoldFromChars = Math.Max(_startGoldFromChars, GetStartGoldForStars(s));
+                    // Sum start gold contributions from A and B characters
+                    _startGoldFromChars += GetStartGoldForStars(s);
                     break;
                 case "C":
                 case "D":
@@ -575,6 +580,16 @@ public class GameManager : Singleton<GameManager>
         return Math.Max(0, afterInt - beforeInt);
     }
 
+    private Coroutine _crystalCoroutine;
+
+    // Event signaled when an external rebirth sequence (UI flow) has fully completed (fade in/out and state applied)
+    public event Action OnRebirthSequenceComplete;
+
+    public void NotifyRebirthSequenceComplete()
+    {
+        try { OnRebirthSequenceComplete?.Invoke(); } catch { }
+    }
+
     // Virtual Unity event methods
     protected virtual void Awake()
     {
@@ -599,7 +614,32 @@ public class GameManager : Singleton<GameManager>
 
     protected virtual void Start()
     {
-        // Start logic
+        // Start crystal accrual coroutine
+        if (_crystalCoroutine == null)
+            _crystalCoroutine = StartCoroutine(CrystalAccrualRoutine());
+    }
+
+    private IEnumerator CrystalAccrualRoutine()
+    {
+        // Accumulate fractional crystals per frame based on CPM (crystals per minute).
+        float acc = 0f;
+        while (true)
+        {
+            // crystals per second
+            float cps = CPM / 60f;
+            acc += cps * Time.deltaTime;
+            if (acc >= 1f)
+            {
+                int add = (int)Math.Floor(acc);
+                acc -= add;
+                try
+                {
+                    Crystal += add;
+                }
+                catch { }
+            }
+            yield return null;
+        }
     }
 
     protected virtual void Update()
@@ -665,9 +705,11 @@ public class GameManager : Singleton<GameManager>
     {
         try
         {
+            _suppressNotifications = true;
+
             // Preserve crystals and character stars
             int preservedCrystal = 0;
-            try { preservedCrystal = this.Crystal; } catch { preservedCrystal = 0; }
+            try { preservedCrystal = this._crystal; } catch { preservedCrystal = 0; }
 
             var preservedChars = new Dictionary<string, int>(_characterStars, StringComparer.OrdinalIgnoreCase);
 
@@ -691,28 +733,35 @@ public class GameManager : Singleton<GameManager>
             _tierNextAvailableTime.Clear();
             EnsureTierCooldownsInitialized();
 
-            // Reset gold and base click/gps values to base from UpgradeConfig
+            // Reset gold and base click/gps values to base from UpgradeConfig using backing fields
             try
             {
-                Gold = 0; // will set start gold from characters below
-                GoldPerClick = (int)Math.Max(0, (int)UpgradeConfig.BaseClickValue);
-                GoldPerSecond = 0;
+                _gold = 0; // set backing fields directly to avoid notifications
+                _goldPerClick = (int)Math.Max(0, (int)UpgradeConfig.BaseClickValue);
+                _goldPerSecond = 0;
             }
-            catch { Gold = 0; GoldPerClick = 0; GoldPerSecond = 0; }
+            catch { _gold = 0; _goldPerClick = 0; _goldPerSecond = 0; }
 
             // Restore preserved character stars and recalc character effects
             _characterStars = new Dictionary<string, int>(preservedChars, StringComparer.OrdinalIgnoreCase);
-            RecalculateCharacterEffects(); // sets StartGoldFromCharacters and applies bonuses to GPC/GPS
+            RecalculateCharacterEffects(); // sets StartGoldFromCharacters and applies bonuses to GPC/GPS (updates backing fields via properties)
 
             // Give starting gold influenced by characters if available
             try
             {
-                Gold = StartGoldFromCharacters;
+                _gold = StartGoldFromCharacters;
             }
-            catch { Gold = 0; }
+            catch { _gold = 0; }
 
             // Restore preserved crystal
-            try { Crystal = preservedCrystal; } catch { }
+            try { _crystal = preservedCrystal; } catch { }
+
+            // Turn notifications back on and push a single set of events so UI updates once
+            _suppressNotifications = false;
+            try { OnGoldChanged?.Invoke(); } catch { }
+            try { OnGoldPerClickChanged?.Invoke(); } catch { }
+            try { OnGoldPerSecondChanged?.Invoke(); } catch { }
+            try { OnCrystalChanged?.Invoke(); } catch { }
 
             // Persist immediately
             try { SaveManager.Instance?.Save(); } catch { }
@@ -721,8 +770,25 @@ public class GameManager : Singleton<GameManager>
         }
         catch (Exception ex)
         {
+            _suppressNotifications = false;
             Debug.LogError($"GameManager: Rebirth failed - {ex}");
         }
+    }
+
+    public event Action<EGPCUpgradeType, bool> OnPurchasedChanged;
+
+    // Public API to change purchase state so listeners can react
+    public void SetPurchasedItem(EGPCUpgradeType tier, bool purchased)
+    {
+        if (_purchasedGPCItems == null) return;
+        bool prev = false;
+        _purchasedGPCItems.TryGetValue(tier, out prev);
+        _purchasedGPCItems[tier] = purchased;
+        try
+        {
+            OnPurchasedChanged?.Invoke(tier, purchased);
+        }
+        catch { }
     }
 }
 
