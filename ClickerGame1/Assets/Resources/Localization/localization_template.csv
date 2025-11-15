@@ -1,11 +1,18 @@
-﻿Key,Korean,English,Japanese,Chinese
-GAME_TITLE,클리커 게임,Clicker Game,クリックゲ?ム,点?放置游?
-UI.Gold,골드,Gold,ゴ?ルド,金?
-UI.GoldFormat,{0} 골드,{0} Gold,{0} ゴ?ルド,{0} 金?
-UI.GPC,클릭당 획득,Gold per Click,クリックあたりの獲得,每次点??得的金?
-UI.GPS,초당 획득,Gold per Second,秒ごとの獲得,每秒?得的金?
-UI.BestGold,최고 골드,Best Gold,最高ゴ?ルド,最高金?
-UI.Level,레벨,Level,レベル,等?
-UI.Clicks,클릭 수,Clicks,クリック?,点?次?
-BUTTON.Buy,구매,Buy,購入,??
-TOOLTIP.UpgradeLevel,업그레이드 레벨,Upgrade Level,アップグレ?ドレベル,升?等?
+﻿Key,Korean,English
+NEED_GOLD,골드 필요,Need Gold
+NEED_CRYSTAL,크리스탈 필요,Need Crystal
+MORE_RECORDS,더 많은 기록 남기기,Keep More Records
+MORE_KNOWLEDGE,더 많은 지식 쌓기,Gain More Knowledge
+MORE_FIREPLACE_TIME,더 많은 불멍 하기,Enjoy More Fireplace Time
+MORE_MEALS,더 많은 식사 하기,Have More Meals
+MORE_WORKS,더 많은 작업 하기,Do More Work
+RECORD_JOURNAL,기록을 남기는 일지,Record Journal
+KNOWLEDGE_BOOKSHELF,지식을 쌓는 책장,Bookshelf of Knowledge
+RELAXING_FIREPLACE,불멍이 가능한 벽난로,Relaxing Fireplace
+SATISFYING_MEAL,허기를 채우는 식사,Satisfying Meal
+WORKBENCH,재료는 제작하는 작업대,Workbench for Crafting
+MYSTERIOUS_ALCHEMY,신비를 담은 연금술,Mysterious Alchemy
+CHARACTER_GACHA,캐릭터 뽑기,Character Gacha
+UI.LANGUAGE,언어,Language
+UI.SOUND,사운드,Sound
+UI.EXIT,게임 종료,Exit Game

@@ -235,7 +235,35 @@ public class UI_CharacterGacha : MonoBehaviour
         _needMoneyImage.SetActive(!hasEnoughCrystals);
         if (!hasEnoughCrystals && _needMoneyText != null)
         {
-            _needMoneyText.text = "100 크리스탈 필요";
+            // Prefer LocalizedText if present so formatting uses placeholders like ### or {0}
+            var loc = _needMoneyText.GetComponent<LocalizedText>();
+            const int CRYSTAL_COST = 100;
+            if (loc != null)
+            {
+                loc.Key = "NEED_CRYSTAL";
+                loc.FormatArgs = new string[] { CRYSTAL_COST.ToString("N0") };
+                loc.Refresh();
+            }
+            else
+            {
+                // Use LocalizationManager template or fallback to numeric prefix
+                if (LocalizationManager.Instance != null)
+                {
+                    var tmpl = LocalizationManager.Instance.GetText("NEED_CRYSTAL");
+                    if (string.IsNullOrEmpty(tmpl) || tmpl == "NEED_CRYSTAL")
+                        _needMoneyText.text = $"{CRYSTAL_COST:N0} 크리스탈 필요";
+                    else if (tmpl.Contains("{0}"))
+                        _needMoneyText.text = string.Format(tmpl, CRYSTAL_COST.ToString("N0"));
+                    else if (tmpl.Contains("###"))
+                        _needMoneyText.text = tmpl.Replace("###", CRYSTAL_COST.ToString("N0"));
+                    else
+                        _needMoneyText.text = $"{CRYSTAL_COST:N0} {tmpl}";
+                }
+                else
+                {
+                    _needMoneyText.text = $"{CRYSTAL_COST:N0} 크리스탈 필요";
+                }
+            }
         }
 
         // Update interactable state based on crystals and remaining characters

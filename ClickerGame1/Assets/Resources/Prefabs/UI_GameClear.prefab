@@ -208,6 +208,7 @@ GameObject:
   - component: {fileID: 1704249795444861773}
   - component: {fileID: 631519444527699120}
   - component: {fileID: 2118559435034230262}
+  - component: {fileID: 2260817194888661124}
   m_Layer: 5
   m_Name: Text (TMP)
   m_TagString: Untagged
@@ -333,6 +334,20 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &2260817194888661124
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2769606488877547975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae94ec7983d22e84f8968a51e31e2bfd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
+  Key: MYSTERIOUS_ALCHEMY
+  FormatArgs: []
 --- !u!1 &7111837254595422377
 GameObject:
   m_ObjectHideFlags: 0
@@ -387,6 +402,7 @@ MonoBehaviour:
   _clickButton: {fileID: 0}
   _needMoneyImage: {fileID: 0}
   _needMoneyText: {fileID: 0}
+  _canvasFadeDuration: 0.5
 --- !u!1 &7780093226049521997
 GameObject:
   m_ObjectHideFlags: 0
@@ -398,6 +414,7 @@ GameObject:
   - component: {fileID: 5963089247560179728}
   - component: {fileID: 295611261614213519}
   - component: {fileID: 807424306877004663}
+  - component: {fileID: 5135584207784530832}
   m_Layer: 5
   m_Name: Text
   m_TagString: Untagged
@@ -523,6 +540,20 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &5135584207784530832
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7780093226049521997}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae94ec7983d22e84f8968a51e31e2bfd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
+  Key: NEED_GOLD
+  FormatArgs: []
 --- !u!1 &8381011247891282366
 GameObject:
   m_ObjectHideFlags: 0

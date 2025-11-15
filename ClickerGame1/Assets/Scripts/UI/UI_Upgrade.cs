@@ -194,8 +194,34 @@ public class UI_Upgrade : UI_Base
 
                 if (!hasEnough && _needMoneyText != null)
                 {
-                    // Format: "### 골드 필요"
-                    _needMoneyText.text = $"{cost:N0} 골드 필요";
+                    // If LocalizedText attached use its formatting behavior
+                    var loc = _needMoneyText.GetComponent<LocalizedText>();
+                    if (loc != null)
+                    {
+                        loc.Key = "NEED_GOLD";
+                        loc.FormatArgs = new string[] { cost.ToString("N0") };
+                        loc.Refresh();
+                    }
+                    else
+                    {
+                        string tmpl = LocalizationManager.Instance != null ? LocalizationManager.Instance.GetText("NEED_GOLD") : null;
+                        if (string.IsNullOrEmpty(tmpl) || tmpl == "NEED_GOLD")
+                        {
+                            _needMoneyText.text = $"{cost:N0} 골드 필요";
+                        }
+                        else if (tmpl.Contains("{0}"))
+                        {
+                            _needMoneyText.text = string.Format(tmpl, cost.ToString("N0"));
+                        }
+                        else if (tmpl.Contains("###"))
+                        {
+                            _needMoneyText.text = tmpl.Replace("###", cost.ToString("N0"));
+                        }
+                        else
+                        {
+                            _needMoneyText.text = $"{cost:N0} {tmpl}";
+                        }
+                    }
                 }
 
                 // Update stat delta texts for this upgrade
@@ -334,6 +360,11 @@ public class UI_Upgrade : UI_Base
 
         _clickButton.interactable = purchased;
         RefreshUI();
+    }
+
+    private string FormatLocalizedValue(string template, long value)
+    {
+        return string.Format(template, value.ToString("N0"));
     }
 }
 

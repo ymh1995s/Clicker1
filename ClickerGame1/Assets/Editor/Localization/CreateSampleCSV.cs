@@ -17,19 +17,29 @@ public static class LocalizationSampleCreator
         string path = Path.Combine(resourcesFolder, fileName);
 
         // Header and sample rows. Values are UTF-8 with BOM to avoid encoding issues in some editors.
-        string header = "Key,Korean,English,Japanese,Chinese";
+        string header = "Key,Korean,English";
         string[] samples = new string[]
         {
-            "GAME_TITLE,Å¬¸®Ä¿ °ÔÀÓ,Clicker Game,«¯«ê«Ã«¯«²?«à,ïÃ?Û¯öÇêı?",
-            "UI.Gold,°ñµå,Gold,«´?«ë«É,ÑÑ?",
-            "UI.GoldFormat,{0} °ñµå,{0} Gold,{0} «´?«ë«É,{0} ÑÑ?",
-            "UI.GPC,Å¬¸¯´ç È¹µæ,Gold per Click,«¯«ê«Ã«¯ª¢ª¿ªêªÎüòÔğ,Øßó­ïÃ??ÔğîÜÑÑ?",
-            "UI.GPS,ÃÊ´ç È¹µæ,Gold per Second,õ©ª´ªÈªÎüòÔğ,Øßõ©?ÔğîÜÑÑ?",
-            "UI.BestGold,ÃÖ°í °ñµå,Best Gold,õÌÍÔ«´?«ë«É,õÌÍÔÑÑ?",
-            "UI.Level,·¹º§,Level,«ì«Ù«ë,Ôõ?",
-            "UI.Clicks,Å¬¸¯ ¼ö,Clicks,«¯«ê«Ã«¯?,ïÃ?ó­?",
-            "BUTTON.Buy,±¸¸Å,Buy,ÏÅìı,??",
-            "TOOLTIP.UpgradeLevel,¾÷±×·¹ÀÌµå ·¹º§,Upgrade Level,«¢«Ã«×«°«ì?«É«ì«Ù«ë,ã®?Ôõ?"
+            // Use ### placeholder so UI formatting replaces it with formatted numbers
+            "NEED_GOLD,### ê³¨ë“œ í•„ìš”,### Need Gold",
+            "NEED_CRYSTAL,### í¬ë¦¬ìŠ¤íƒˆ í•„ìš”,### Need Crystal",
+            "MORE_RECORDS,ë” ë§ì€ ê¸°ë¡ ë‚¨ê¸°ê¸°,Keep More Records",
+            "MORE_KNOWLEDGE,ë” ë§ì€ ì§€ì‹ ìŒ“ê¸°,Gain More Knowledge",
+            "MORE_FIREPLACE_TIME,ë” ë§ì€ ë¶ˆë© í•˜ê¸°,Enjoy More Fireplace Time",
+            "MORE_MEALS,ë” ë§ì€ ì‹ì‚¬ í•˜ê¸°,Have More Meals",
+            "MORE_WORKS,ë” ë§ì€ ì‘ì—… í•˜ê¸°,Do More Work",
+            "RECORD_JOURNAL,ê¸°ë¡ì„ ë‚¨ê¸°ëŠ” ì¼ì§€,Record Journal",
+            "KNOWLEDGE_BOOKSHELF,ì§€ì‹ì„ ìŒ“ëŠ” ì±…ì¥,Bookshelf of Knowledge",
+            "RELAXING_FIREPLACE,ë¶ˆë©ì´ ê°€ëŠ¥í•œ ë²½ë‚œë¡œ,Relaxing Fireplace",
+            "SATISFYING_MEAL,í—ˆê¸°ë¥¼ ì±„ìš°ëŠ” ì‹ì‚¬,Satisfying Meal",
+            "WORKBENCH,ì¬ë£ŒëŠ” ì œì‘í•˜ëŠ” ì‘ì—…ëŒ€,Workbench for Crafting",
+            "MYSTERIOUS_ALCHEMY,ì‹ ë¹„ë¥¼ ë‹´ì€ ì—°ê¸ˆìˆ ,Mysterious Alchemy",
+            // Added key: Character Gacha
+            "CHARACTER_GACHA,ìºë¦­í„° ë½‘ê¸°,Character Gacha",
+            // Added keys: Language, Sound, Exit Game
+            "UI.LANGUAGE,ì–¸ì–´,Language",
+            "UI.SOUND,ì‚¬ìš´ë“œ,Sound",
+            "UI.EXIT,ê²Œì„ ì¢…ë£Œ,Exit Game"
         };
 
         try

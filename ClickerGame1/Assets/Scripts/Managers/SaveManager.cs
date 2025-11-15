@@ -55,10 +55,18 @@ public class SaveManager : Singleton<SaveManager>
         public List<PurchasedEntry> purchasedGpcItems = new List<PurchasedEntry>();
         public List<CharacterEntry> characterCollections = new List<CharacterEntry>();
         public List<CooldownEntry> cooldowns = new List<CooldownEntry>();
+
+        // New: persist UI settings
+        public string language = "en";
+        public bool soundOn = true;
     }
 
     // Keep loaded save data in-memory so other systems can query/update it.
     private SaveData _currentData = null;
+
+    // Indicates whether Load() has completed (successful or default)
+    private bool _isLoaded = false;
+    public bool IsLoaded => _isLoaded;
 
     protected void Awake()
     {
@@ -149,6 +157,35 @@ public class SaveManager : Singleton<SaveManager>
             }
             catch { }
 
+            // Persist UI settings: language and sound
+            try
+            {
+                // Language: prefer LocalizationManager if available, else use previously loaded value
+                if (LocalizationManager.Instance != null && !string.IsNullOrEmpty(LocalizationManager.Instance.CurrentLanguage))
+                {
+                    data.language = LocalizationManager.Instance.CurrentLanguage;
+                }
+                else if (_currentData != null)
+                {
+                    data.language = _currentData.language;
+                }
+            }
+            catch { }
+
+            try
+            {
+                // Sound: prefer explicit saved value if present in _currentData, otherwise use AudioListener volume
+                if (_currentData != null)
+                {
+                    data.soundOn = _currentData.soundOn;
+                }
+                else
+                {
+                    data.soundOn = AudioListener.volume > 0f;
+                }
+            }
+            catch { data.soundOn = (_currentData != null) ? _currentData.soundOn : true; }
+
             string json = JsonUtility.ToJson(data, true);
             File.WriteAllText(SaveFilePath, json, Encoding.UTF8);
 
@@ -174,6 +211,19 @@ public class SaveManager : Singleton<SaveManager>
                 Debug.Log("SaveManager: No save file found.");
 #endif
                 _currentData = new SaveData();
+
+                // If PlayerPrefs has MasterSoundOn, prefer that as initial value
+                try
+                {
+                    if (PlayerPrefs.HasKey("MasterSoundOn"))
+                    {
+                        _currentData.soundOn = PlayerPrefs.GetInt("MasterSoundOn", _currentData.soundOn ? 1 : 0) == 1;
+                    }
+                }
+                catch { }
+
+                _isLoaded = true;
+                OnLoaded?.Invoke();
                 return;
             }
 
@@ -185,10 +235,32 @@ public class SaveManager : Singleton<SaveManager>
                 Debug.LogWarning("SaveManager: Failed to parse save file.");
 #endif
                 _currentData = new SaveData();
+
+                try
+                {
+                    if (PlayerPrefs.HasKey("MasterSoundOn"))
+                    {
+                        _currentData.soundOn = PlayerPrefs.GetInt("MasterSoundOn", _currentData.soundOn ? 1 : 0) == 1;
+                    }
+                }
+                catch { }
+
+                _isLoaded = true;
+                OnLoaded?.Invoke();
                 return;
             }
 
             _currentData = data;
+
+            // If PlayerPrefs has MasterSoundOn set (user changed in options before save file read), prefer it
+            try
+            {
+                if (PlayerPrefs.HasKey("MasterSoundOn"))
+                {
+                    _currentData.soundOn = PlayerPrefs.GetInt("MasterSoundOn", _currentData.soundOn ? 1 : 0) == 1;
+                }
+            }
+            catch { }
 
             if (GameManager.Instance != null)
             {
@@ -297,10 +369,31 @@ public class SaveManager : Singleton<SaveManager>
             }
             catch { }
 
+            // Try to apply UI settings immediately if managers exist
+            try
+            {
+                if (!string.IsNullOrEmpty(_currentData.language) && LocalizationManager.Instance != null)
+                {
+                    LocalizationManager.Instance.SetLanguage(_currentData.language);
+                }
+            }
+            catch { }
+
+            try
+            {
+                // Apply saved sound setting: set AudioListener and PlayerPrefs
+                bool soundOn = _currentData.soundOn;
+                AudioListener.volume = soundOn ? 1f : 0f;
+                PlayerPrefs.SetInt("MasterSoundOn", soundOn ? 1 : 0);
+                PlayerPrefs.Save();
+            }
+            catch { }
+
 #if UNITY_EDITOR
             Debug.Log($"SaveManager: Loaded save from {SaveFilePath}");
 #endif
 
+            _isLoaded = true;
             OnLoaded?.Invoke();
         }
         catch (Exception ex)
@@ -409,5 +502,42 @@ public class SaveManager : Singleton<SaveManager>
             Save();
         }
         catch { }
+    }
+
+    // Public getters/setters for UI settings
+    public string GetSavedLanguage()
+    {
+        if (_currentData == null) _currentData = new SaveData();
+        return _currentData.language ?? "en";
+    }
+
+    public void SetSavedLanguage(string lang)
+    {
+        if (_currentData == null) _currentData = new SaveData();
+        _currentData.language = string.IsNullOrEmpty(lang) ? "en" : lang;
+        Save();
+    }
+
+    public bool GetSavedSoundOn()
+    {
+        if (_currentData == null) _currentData = new SaveData();
+        return _currentData.soundOn;
+    }
+
+    public void SetSavedSoundOn(bool on)
+    {
+        if (_currentData == null) _currentData = new SaveData();
+        _currentData.soundOn = on;
+
+        // Immediately apply to runtime audio and PlayerPrefs so UI and audio reflect change
+        try
+        {
+            AudioListener.volume = on ? 1f : 0f;
+            PlayerPrefs.SetInt("MasterSoundOn", on ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+        catch { }
+
+        Save();
     }
 }

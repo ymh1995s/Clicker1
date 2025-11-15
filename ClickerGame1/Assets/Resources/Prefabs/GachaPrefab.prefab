@@ -162,6 +162,7 @@ GameObject:
   - component: {fileID: 4801305891901113026}
   - component: {fileID: 6357826802755550196}
   - component: {fileID: 8507261238074705556}
+  - component: {fileID: 4498569488995706416}
   m_Layer: 5
   m_Name: Text
   m_TagString: Untagged
@@ -216,7 +217,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "### \uD06C\uB9AC\uC2A4\uD0C8 \uD544\uC694 "
+  m_text: 100
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: dc532f397c44fcc4299131e42362cb0b, type: 2}
   m_sharedMaterial: {fileID: 5327829148518894207, guid: dc532f397c44fcc4299131e42362cb0b, type: 2}
@@ -287,6 +288,20 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &4498569488995706416
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4263333311678384377}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae94ec7983d22e84f8968a51e31e2bfd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
+  Key: NEED_CRYSTAL
+  FormatArgs: []
 --- !u!1 &4901974416203573595
 GameObject:
   m_ObjectHideFlags: 0
@@ -298,6 +313,7 @@ GameObject:
   - component: {fileID: 4916596673641696707}
   - component: {fileID: 7115943418991694564}
   - component: {fileID: 7815768862074130886}
+  - component: {fileID: 8089756483816379276}
   m_Layer: 5
   m_Name: Text (TMP)
   m_TagString: Untagged
@@ -423,6 +439,20 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &8089756483816379276
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4901974416203573595}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae94ec7983d22e84f8968a51e31e2bfd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
+  Key: CHARACTER_GACHA
+  FormatArgs: []
 --- !u!1 &5289486523409503700
 GameObject:
   m_ObjectHideFlags: 0
@@ -595,6 +625,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29a8ce2c48fda64448d2708ff5c45e68, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UI_CharacterGacha
-  gachaCost: 100
   gachaButton: {fileID: 0}
-  framesParent: {fileID: 0}
+  _needMoneyImage: {fileID: 0}
+  _needMoneyText: {fileID: 0}

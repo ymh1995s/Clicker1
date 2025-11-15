@@ -130,7 +130,35 @@ public class UI_ItemBuy : UI_Base
 
             if (!hasEnough && _needMoneyText != null)
             {
-                _needMoneyText.text = $"{_price:N0} 골드 필요";
+                // If a LocalizedText component is present on the same GameObject, use its formatting
+                var loc = _needMoneyText.GetComponent<LocalizedText>();
+                if (loc != null)
+                {
+                    loc.Key = "NEED_GOLD";
+                    loc.FormatArgs = new string[] { _price.ToString("N0") };
+                    loc.Refresh();
+                }
+                else
+                {
+                    // Use localization manager template or fallback
+                    if (LocalizationManager.Instance != null)
+                    {
+                        var tmpl = LocalizationManager.Instance.GetText("NEED_GOLD");
+                        // If template missing or equals key, fallback to numeric prefix
+                        if (string.IsNullOrEmpty(tmpl) || tmpl == "NEED_GOLD")
+                            _needMoneyText.text = $"{_price:N0} 골드 필요";
+                        else if (tmpl.Contains("{0}"))
+                            _needMoneyText.text = string.Format(tmpl, _price.ToString("N0"));
+                        else if (tmpl.Contains("###"))
+                            _needMoneyText.text = tmpl.Replace("###", _price.ToString("N0"));
+                        else
+                            _needMoneyText.text = $"{_price:N0} {tmpl}";
+                    }
+                    else
+                    {
+                        _needMoneyText.text = $"{_price:N0} 골드 필요";
+                    }
+                }
             }
         }
 
@@ -203,5 +231,29 @@ public class UI_ItemBuy : UI_Base
         }
 
         RefreshUI();
+    }
+
+    // Helper to format localized template strings that expect a numeric substitution.
+    // Supports formats containing "{0}", "###" placeholder, "%d" or "%s". Falls back to prefixing the value.
+    private string FormatLocalizedValue(string template, long amount)
+    {
+        if (string.IsNullOrEmpty(template))
+            return amount.ToString("N0");
+
+        string formattedAmount = amount.ToString("N0");
+
+        if (template.Contains("{0}"))
+        {
+            try { return string.Format(template, formattedAmount); } catch { }
+        }
+
+        if (template.Contains("###"))
+            return template.Replace("###", formattedAmount);
+
+        if (template.Contains("%d") || template.Contains("%s"))
+            return template.Replace("%d", formattedAmount).Replace("%s", formattedAmount);
+
+        // fallback: prefix the amount
+        return $"{formattedAmount} {template}";
     }
 }

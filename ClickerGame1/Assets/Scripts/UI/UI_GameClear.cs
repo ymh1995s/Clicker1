@@ -82,6 +82,33 @@ public class UI_GameClear : UI_Base
         RefreshUI();
         if (GameManager.Instance != null)
             GameManager.Instance.OnGoldChanged += RefreshUI;
+
+        // Apply saved language/sound states to UI elements if SaveManager has values
+        try
+        {
+            if (SaveManager.Instance != null)
+            {
+                // Sound: synchronize UI_SoundSet buttons if present
+                bool soundOn = SaveManager.Instance.GetSavedSoundOn();
+                var soundSet = FindObjectOfType<UI_SoundSet>(true);
+                if (soundSet != null)
+                {
+                    // call ApplySoundSetting via reflection is ugly; instead rely on UI_SoundSet.OnEnable to read SaveManager
+                    // but we can force Refresh by toggling enable
+                    soundSet.gameObject.SetActive(false);
+                    soundSet.gameObject.SetActive(true);
+                }
+
+                // Language: synchronize UI_Language buttons similarly
+                var langSet = FindObjectOfType<UI_Language>(true);
+                if (langSet != null)
+                {
+                    langSet.gameObject.SetActive(false);
+                    langSet.gameObject.SetActive(true);
+                }
+            }
+        }
+        catch { }
     }
 
     void OnDisable()
@@ -113,8 +140,18 @@ public class UI_GameClear : UI_Base
             _needMoneyImage.SetActive(!hasEnough);
             if (!hasEnough && _needMoneyText != null)
             {
-                // Show requested numeric text instead of Korean word '천만'
-                _needMoneyText.text = $"{REQUIRED_GOLD:N0} 골드 필요";
+                // If a LocalizedText component is present on the same GameObject, use its formatting
+                var loc = _needMoneyText.GetComponent<LocalizedText>();
+                if (loc != null)
+                {
+                    loc.Key = "NEED_GOLD";
+                    loc.FormatArgs = new string[] { REQUIRED_GOLD.ToString("N0") };
+                    loc.Refresh();
+                }
+                else
+                {
+                    _needMoneyText.text = $"{REQUIRED_GOLD:N0} 골드 필요";
+                }
             }
         }
 

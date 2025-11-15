@@ -249,7 +249,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::UI_ItemBuy
   _clickButton: {fileID: 0}
   _gpcUpgradeType: 0
-  _price: 5
   _needMoneyImage: {fileID: 0}
   _needMoneyText: {fileID: 0}
 --- !u!1 &4369516117041660686
@@ -263,6 +262,7 @@ GameObject:
   - component: {fileID: 8649983091307283139}
   - component: {fileID: 2242092747454654247}
   - component: {fileID: 3055774692839080688}
+  - component: {fileID: 7784777983900660982}
   m_Layer: 5
   m_Name: Text (TMP)
   m_TagString: Untagged
@@ -388,6 +388,20 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &7784777983900660982
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4369516117041660686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae94ec7983d22e84f8968a51e31e2bfd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
+  Key: RECORD_JOURNAL
+  FormatArgs: []
 --- !u!1 &4785597795825347196
 GameObject:
   m_ObjectHideFlags: 0
@@ -399,6 +413,7 @@ GameObject:
   - component: {fileID: 8906189528942570603}
   - component: {fileID: 781137051170275118}
   - component: {fileID: 6155417140167073332}
+  - component: {fileID: 4640623626241392025}
   m_Layer: 5
   m_Name: Text
   m_TagString: Untagged
@@ -524,6 +539,20 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &4640623626241392025
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4785597795825347196}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae94ec7983d22e84f8968a51e31e2bfd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
+  Key: NEED_GOLD
+  FormatArgs: []
 --- !u!1 &9144286721748593366
 GameObject:
   m_ObjectHideFlags: 0

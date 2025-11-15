@@ -69,9 +69,26 @@ public class LocalizationManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // Load current language on awake
-        if (string.IsNullOrWhiteSpace(_currentLanguage)) _currentLanguage = "en";
-        SetLanguage(_currentLanguage);
+        // Determine language to load: prefer SaveManager saved value if available, otherwise use serialized default
+        try
+        {
+            string langToLoad = _currentLanguage;
+            if (SaveManager.Instance != null)
+            {
+                var saved = SaveManager.Instance.GetSavedLanguage();
+                if (!string.IsNullOrEmpty(saved)) langToLoad = saved;
+            }
+
+            if (string.IsNullOrWhiteSpace(langToLoad)) langToLoad = "en";
+            _currentLanguage = langToLoad;
+            SetLanguage(_currentLanguage);
+        }
+        catch
+        {
+            // fallback to serialized value
+            if (string.IsNullOrWhiteSpace(_currentLanguage)) _currentLanguage = "en";
+            try { SetLanguage(_currentLanguage); } catch { }
+        }
     }
 
 #if UNITY_EDITOR
