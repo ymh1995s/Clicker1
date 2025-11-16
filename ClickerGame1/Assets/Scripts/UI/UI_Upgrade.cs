@@ -122,6 +122,13 @@ public class UI_Upgrade : UI_Base
 
     void OnEnable()
     {
+        // If a recharge coroutine reference exists (could be from previous active state) stop it to ensure a fresh start
+        if (_rechargeCoroutine != null)
+        {
+            try { StopCoroutine(_rechargeCoroutine); } catch { }
+            _rechargeCoroutine = null;
+        }
+
         // Subscribe to gold changes so NeedMoneyImage updates immediately when player gains/loses gold
         if (GameManager.Instance != null)
             GameManager.Instance.OnGoldChanged += RefreshUI;
@@ -160,6 +167,26 @@ public class UI_Upgrade : UI_Base
 
         if (GameManager.Instance != null)
             GameManager.Instance.OnRebirthSequenceComplete -= OnRebirthSequenceComplete;
+
+        // Stop any running recharge coroutine when this UI is disabled so we don't keep a stale coroutine reference
+        if (_rechargeCoroutine != null)
+        {
+            try { StopCoroutine(_rechargeCoroutine); } catch { }
+            _rechargeCoroutine = null;
+        }
+
+        // Hide blur visual and ensure button image is restored when UI is disabled
+        try
+        {
+            if (_blurImage != null)
+            {
+                _blurImage.gameObject.SetActive(false);
+            }
+            var btnImage = _clickButton != null ? _clickButton.GetComponent<Image>() : null;
+            if (btnImage != null)
+                btnImage.enabled = true;
+        }
+        catch { }
     }
 
     protected override void BindUIEvents()
