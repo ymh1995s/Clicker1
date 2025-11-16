@@ -753,8 +753,8 @@ public class GameManager : Singleton<GameManager>
             }
             catch { _gold = 0; }
 
-            // Restore preserved crystal
-            try { _crystal = preservedCrystal; } catch { }
+            // Restore preserved crystal and add 200 crystals
+            try { _crystal = preservedCrystal + 200; } catch { }
 
             // Turn notifications back on and push a single set of events so UI updates once
             _suppressNotifications = false;
