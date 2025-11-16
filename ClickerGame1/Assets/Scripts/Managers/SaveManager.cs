@@ -57,7 +57,7 @@ public class SaveManager : Singleton<SaveManager>
         public List<CooldownEntry> cooldowns = new List<CooldownEntry>();
 
         // New: persist UI settings
-        public string language = "en";
+        public string language = "ko";
         public bool soundOn = true;
     }
 
@@ -508,13 +508,13 @@ public class SaveManager : Singleton<SaveManager>
     public string GetSavedLanguage()
     {
         if (_currentData == null) _currentData = new SaveData();
-        return _currentData.language ?? "en";
+        return _currentData.language ?? "ko";
     }
 
     public void SetSavedLanguage(string lang)
     {
         if (_currentData == null) _currentData = new SaveData();
-        _currentData.language = string.IsNullOrEmpty(lang) ? "en" : lang;
+        _currentData.language = string.IsNullOrEmpty(lang) ? "ko" : lang;
         Save();
     }
 
