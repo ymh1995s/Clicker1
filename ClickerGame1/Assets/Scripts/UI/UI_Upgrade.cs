@@ -325,6 +325,18 @@ public class UI_Upgrade : UI_Base
 
     private void IncreaseGPC()
     {
+        // Play UI click SFX for upgrade
+        try
+        {
+            if (AudioManager.Instance == null)
+            {
+                var amgo = new GameObject("AudioManager");
+                amgo.AddComponent<AudioManager>();
+            }
+            AudioManager.Instance?.PlayUiClickSfx();
+        }
+        catch { }
+
         if (GameManager.Instance == null) return;
 
         // Use the centralized GameManager method which handles cost checks, cooldown, gold deduction and stat recalculation

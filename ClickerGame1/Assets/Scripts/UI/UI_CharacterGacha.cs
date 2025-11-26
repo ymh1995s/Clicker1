@@ -120,6 +120,18 @@ public class UI_CharacterGacha : MonoBehaviour
     // wrapper with correct signature for Button.onClick
     private void OnGachaButtonClicked()
     {
+        // Play UI click SFX for gacha
+        try
+        {
+            if (AudioManager.Instance == null)
+            {
+                var amgo = new GameObject("AudioManager");
+                amgo.AddComponent<AudioManager>();
+            }
+            AudioManager.Instance?.PlayUiClickSfx();
+        }
+        catch { }
+
         bool ok = TryGacha();
         Debug.Log(ok ? "UI_CharacterGacha: Gacha purchase SUCCESS" : "UI_CharacterGacha: Gacha purchase FAILED");
     }

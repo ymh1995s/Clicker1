@@ -83,6 +83,13 @@ public class UI_ClickerGame : UI_Base
         base.Start();
         BindUIEvents();
         RefreshUI();
+
+        // Ensure AudioManager exists: if not, create an empty GameObject and attach AudioManager so it persists.
+        if (AudioManager.Instance == null)
+        {
+            var go = new GameObject("AudioManager");
+            go.AddComponent<AudioManager>();
+        }
     }
 
     protected override void Update()
@@ -158,7 +165,7 @@ public class UI_ClickerGame : UI_Base
         if (_bmButton != null)
         {
             _bmButton.onClick.RemoveAllListeners();
-            _bmButton.onClick.AddListener(() => ActivateTab(_bmTab));
+            _bmButton.onClick.AddListener(() => OnBMButtonClicked());
         }
 
         if (_optionButton != null)
@@ -272,6 +279,12 @@ public class UI_ClickerGame : UI_Base
         {
             GoldEffectManager.Instance.SpawnAtScreen(screenPosition);
         }
+
+        // Play play-area SFX (non-looping). Uses AudioManager.PlayPlayAreaSfx which internally uses PlayOneShot
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayPlayAreaSfx();
+        }
     }
 
     private void UpdateGoldPerSecond()
@@ -328,5 +341,11 @@ public class UI_ClickerGame : UI_Base
         if (_crystalPerMinText == null || GameManager.Instance == null) return;
         // Format: CPM value with short suffix '/m' on the same line (no newline)
         _crystalPerMinText.text = $"{GameManager.Instance.CPM:N0}/m";
+    }
+
+    private void OnBMButtonClicked()
+    {
+        // Toggle BM tab visibility like before
+        ActivateTab(_bmTab);
     }
 }

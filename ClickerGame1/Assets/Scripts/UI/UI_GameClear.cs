@@ -24,7 +24,7 @@ public class UI_GameClear : UI_Base
     // Input blocker and root canvas fade
     private GameObject _inputBlocker;
     private CanvasGroup _rootCanvasGroup;
-    [SerializeField] private float _canvasFadeDuration = 0.5f;
+    [SerializeField] private float _canvasFade_DURATION = 0.5f;
 
     protected override void Awake()
     {
@@ -223,7 +223,7 @@ public class UI_GameClear : UI_Base
     {
         // First fade out root canvas
         if (_rootCanvasGroup != null)
-            yield return StartCoroutine(FadeCanvasGroup(_rootCanvasGroup, 1f, 0f, _canvasFadeDuration * 2f));
+            yield return StartCoroutine(FadeCanvasGroup(_rootCanvasGroup, 1f, 0f, _canvasFade_DURATION * 2f));
 
         // small delay to ensure fade completed visually
         yield return new WaitForSeconds(0.05f);
@@ -296,7 +296,7 @@ public class UI_GameClear : UI_Base
 
         // Fade back in
         if (_rootCanvasGroup != null)
-            yield return StartCoroutine(FadeCanvasGroup(_rootCanvasGroup, 0f, 1f, _canvasFadeDuration * 2f));
+            yield return StartCoroutine(FadeCanvasGroup(_rootCanvasGroup, 0f, 1f, _canvasFade_DURATION * 2f));
 
         // Notify GameManager that rebirth sequence is fully complete (including fades)
         try { GameManager.Instance?.NotifyRebirthSequenceComplete(); } catch { }

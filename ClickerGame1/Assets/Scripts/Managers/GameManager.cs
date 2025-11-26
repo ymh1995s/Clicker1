@@ -610,6 +610,34 @@ public class GameManager : Singleton<GameManager>
             Application.quitting += HandleApplicationQuitting;
         }
         catch { }
+
+        // Ensure AudioManager exists early so BGM can start immediately on game start
+        try
+        {
+            if (AudioManager.Instance == null)
+            {
+                var amGo = new GameObject("AudioManager");
+                var am = amGo.AddComponent<AudioManager>();
+
+                // If there is no AudioListener in scene, try to add one to main camera or to the AudioManager
+                bool hasListener = FindObjectOfType<AudioListener>() != null;
+                if (!hasListener)
+                {
+                    if (Camera.main != null)
+                    {
+                        if (Camera.main.gameObject.GetComponent<AudioListener>() == null)
+                            Camera.main.gameObject.AddComponent<AudioListener>();
+                    }
+                    else
+                    {
+                        // fallback: attach AudioListener to AudioManager GameObject
+                        if (amGo.GetComponent<AudioListener>() == null)
+                            amGo.AddComponent<AudioListener>();
+                    }
+                }
+            }
+        }
+        catch { }
     }
 
     protected virtual void Start()

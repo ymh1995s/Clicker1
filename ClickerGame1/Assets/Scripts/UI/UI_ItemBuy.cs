@@ -171,6 +171,18 @@ public class UI_ItemBuy : UI_Base
 
     private void TryBuyItem()
     {
+        // Play UI click SFX for buy action
+        try
+        {
+            if (AudioManager.Instance == null)
+            {
+                var amgo = new GameObject("AudioManager");
+                amgo.AddComponent<AudioManager>();
+            }
+            AudioManager.Instance?.PlayUiClickSfx();
+        }
+        catch { }
+
         // Safety: ensure GameManager and button exist
         if (_clickButton == null)
             return;
