@@ -1,8 +1,9 @@
+using System;
 using Unity.Services.LevelPlay;
 using UnityEngine;
 
 // This sample demonstrates how to use the LevelPlay SDK to load and show ads in a Unity game.
-public class LevelPlaySample : MonoBehaviour
+public class AdsManager : Singleton<AdsManager>
 {
     [SerializeField]
     private Texture2D lpLogo;
@@ -11,6 +12,22 @@ public class LevelPlaySample : MonoBehaviour
     private LevelPlayRewardedAd rewardedVideoAd;
 
     bool isAdsEnabled = false;
+
+    Action _onRewardedAction;
+
+    public void ShowRewardedAd(Action action)
+    {
+        _onRewardedAction = action;
+        rewardedVideoAd.LoadAd();
+    }
+
+    public void ShowRewardedAds_AfterLoading()
+    {
+        if(rewardedVideoAd.IsAdReady())
+        {
+            rewardedVideoAd.ShowAd();
+        }
+    }
 
     public void Start()
     {
@@ -72,6 +89,8 @@ public class LevelPlaySample : MonoBehaviour
         interstitialAd.OnAdInfoChanged += InterstitialOnAdInfoChangedEvent;
     }
 
+    #region ETC
+    /*
     public void OnGUI()
     {
         GUI.enabled = isAdsEnabled;
@@ -161,6 +180,7 @@ public class LevelPlaySample : MonoBehaviour
 
         GUI.EndGroup();
     }
+    */
 
     void SdkInitializationCompletedEvent(LevelPlayConfiguration config)
     {
@@ -173,10 +193,12 @@ public class LevelPlaySample : MonoBehaviour
     {
         Debug.Log($"[LevelPlaySample] Received SdkInitializationFailedEvent with Error: {error}");
     }
+    #endregion ETC
 
     void RewardedVideoOnLoadedEvent(LevelPlayAdInfo adInfo)
     {
         Debug.Log($"[LevelPlaySample] Received RewardedVideoOnLoadedEvent With AdInfo: {adInfo}");
+        ShowRewardedAds_AfterLoading();
     }
 
     void RewardedVideoOnAdLoadFailedEvent(LevelPlayAdError error)
@@ -197,8 +219,11 @@ public class LevelPlaySample : MonoBehaviour
     void RewardedVideoOnAdRewardedEvent(LevelPlayAdInfo adInfo, LevelPlayReward reward)
     {
         Debug.Log($"[LevelPlaySample] Received RewardedVideoOnAdRewardedEvent With AdInfo: {adInfo} and Reward: {reward}");
+        _onRewardedAction?.Invoke();
+        _onRewardedAction = null;
     }
 
+    #region ETC
     void RewardedVideoOnAdClickedEvent(LevelPlayAdInfo adInfo)
     {
         Debug.Log($"[LevelPlaySample] Received RewardedVideoOnAdClickedEvent With AdInfo: {adInfo}");
@@ -295,9 +320,12 @@ public class LevelPlaySample : MonoBehaviour
         Debug.Log($"[LevelPlaySample] Received ImpressionDataReadyEvent allData: {impressionData.AllData}");
     }
 
+    #endregion ETC
+
     private void OnDisable()
     {
         bannerAd?.DestroyAd();
         interstitialAd?.DestroyAd();
     }
+
 }
