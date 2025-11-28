@@ -10,6 +10,7 @@ public class UI_AdReward : MonoBehaviour
         AdsManager.Instance.ShowRewardedAd(() =>
         {
             GameManager.Instance.Crystal += rewardAmount;
+            SaveManager.Instance?.Save();
         });
     }
 }

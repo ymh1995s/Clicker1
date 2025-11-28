@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -7,16 +7,13 @@ using UnityEngine.UI;
 
 namespace Samples.Purchasing.Legacy.Core.BuyingConsumables
 {
-    public class BuyingConsumables : MonoBehaviour
+    public class PurchaseManager : Singleton<SaveManager>
     {
         StoreController m_StoreController; // The Unity Purchasing system.
 
         //Your products IDs. They should match the ids of your products in your store.
-        public string goldProductId = "com.mycompany.mygame.gold1";
-        public string diamondProductId = "com.mycompany.mygame.diamond1";
-
-        public Text GoldCountText;
-        public Text DiamondCountText;
+        public string crystal200ProductId = "com.mycompany.mygame.crystal200";
+        public string crystal1000ProductId = "com.mycompany.mygame.crystal1000";
 
         int m_GoldCount;
         int m_DiamondCount;
@@ -24,11 +21,6 @@ namespace Samples.Purchasing.Legacy.Core.BuyingConsumables
         void Awake()
         {
             InitializeIAP();
-        }
-
-        void Start()
-        {
-            UpdateUI();
         }
 
         async void InitializeIAP()
@@ -52,21 +44,21 @@ namespace Samples.Purchasing.Legacy.Core.BuyingConsumables
         {
             var initialProductsToFetch = new List<ProductDefinition>
             {
-                new(goldProductId, ProductType.Consumable),
-                new(diamondProductId, ProductType.Consumable)
+                new(crystal200ProductId, ProductType.Consumable),
+                new(crystal1000ProductId, ProductType.Consumable)
             };
 
             m_StoreController.FetchProducts(initialProductsToFetch);
         }
 
-        public void BuyGold()
+        public void OnClick200Crystal()
         {
-            m_StoreController.PurchaseProduct(goldProductId);
+            m_StoreController.PurchaseProduct(crystal200ProductId);
         }
 
-        public void BuyDiamond()
+        public void OnClick1000Crystal()
         {
-            m_StoreController.PurchaseProduct(diamondProductId);
+            m_StoreController.PurchaseProduct(crystal1000ProductId);
         }
 
         void OnPurchaseFailed(FailedOrder order)
@@ -92,13 +84,13 @@ namespace Samples.Purchasing.Legacy.Core.BuyingConsumables
             }
 
             //Add the purchased product to the players inventory
-            if (product.definition.id == goldProductId)
+            if (product.definition.id == crystal200ProductId)
             {
-                AddGold();
+                Add200Crystal();
             }
-            else if (product.definition.id == diamondProductId)
+            else if (product.definition.id == crystal1000ProductId)
             {
-                AddDiamond();
+                Add1000Crystal();
             }
 
             Debug.Log($"Purchase complete - Product: {product.definition.id}");
@@ -168,22 +160,18 @@ namespace Samples.Purchasing.Legacy.Core.BuyingConsumables
             Debug.Log($"Products fetch failed for {failure.FailedFetchProducts.Count} products: {failure.FailureReason}");
         }
 
-        void AddGold()
+        void Add200Crystal()
         {
-            m_GoldCount++;
-            UpdateUI();
+            GameManager.Instance.Crystal += 200;
+            SaveManager.Instance?.Save();
+            Debug.Log("PurchaseManager: Added 200 crystals.");
         }
 
-        void AddDiamond()
+        void Add1000Crystal()
         {
-            m_DiamondCount++;
-            UpdateUI();
-        }
-
-        void UpdateUI()
-        {
-            GoldCountText.text = $"Your Gold: {m_GoldCount}";
-            DiamondCountText.text = $"Your Diamonds: {m_DiamondCount}";
+            GameManager.Instance.Crystal += 1000;
+            SaveManager.Instance?.Save();
+            Debug.Log("PurchaseManager: Added 1000 crystals.");
         }
     }
 }
