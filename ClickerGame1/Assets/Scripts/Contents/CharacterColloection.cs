@@ -15,7 +15,7 @@ using TMPro;
 // - ExplainTxt (TMP_Text)
 // - ValueTxt (TMP_Text)
 // The frame has an identifier 'collectionId' used for saving/loading. Star count ranges 0..5.
-public class CharacterColloection : MonoBehaviour
+public class CharacterColloection : Singleton<CharacterColloection>
 {
     // 10 enum values A..J exposed in the Inspector
     public enum CharacterId
@@ -30,7 +30,7 @@ public class CharacterColloection : MonoBehaviour
     // Centralized per-star bonus tables (index = star count 0..5)
     [Header("Character Bonuses (per-star tables)")]
     [Tooltip("Start gold added for characters by star count. Index 0..5 (0 = no stars)")]
-    [SerializeField] private int[] StartGoldByStars = new int[] { 0, 10000, 12000, 15000, 17000, 20000 };
+    [SerializeField] private int[] StartGoldByStars = new int[] { 0, 10000, 15000, 20000, 25000, 30000 };
 
     [Tooltip("GPC percent bonus for characters by star count. Use 0.10 for +10% etc. Index 0..5")]
     [SerializeField] private float[] GpcPercentByStars = new float[] { 0f, 0.10f, 0.12f, 0.15f, 0.17f, 0.20f };
@@ -42,7 +42,7 @@ public class CharacterColloection : MonoBehaviour
     [SerializeField] private int[] CpmByStars = new int[] { 0, 1, 2, 3, 4, 5 };
 
     [Tooltip("Clear crystal reward added by characters by star count. Index 0..5")]
-    [SerializeField] private int[] ClearCrystalByStars = new int[] { 0, 100, 110, 120, 130, 150 };
+    [SerializeField] private int[] ClearCrystalByStars = new int[] { 0, 200, 400, 600, 800, 1000 };
 
     // Provide a string view for existing SaveManager integration
     public string collectionId => collectionIdEnum.ToString();
@@ -230,7 +230,9 @@ public class CharacterColloection : MonoBehaviour
                 break;
             case "I":
             case "J":
-                value = s > 0 ? $"+{GetClearCrystalForStars(s):N0}" : "";
+                // Use the instance mapping (preferred) if available
+                int clearCrystal = GetClearCrystalForStars(s);
+                value = s > 0 ? $"+{clearCrystal:N0}" : "";
                 break;
             default:
                 value = "";
@@ -279,6 +281,55 @@ public class CharacterColloection : MonoBehaviour
         if (ClearCrystalByStars == null || ClearCrystalByStars.Length == 0) return 0;
         int idx = Mathf.Clamp(s, 0, ClearCrystalByStars.Length - 1);
         return ClearCrystalByStars[idx];
+    }
+
+    // Public static helpers that read the serialized arrays from the registered default instance.
+    // If no instance is registered, they gracefully fall back to reasonable hardcoded values.
+    public static int MapStartGoldForStars(int s)
+    {
+        // Prefer the registered default instance
+        var inst = Instance;
+        if (inst != null)
+            return inst.GetStartGoldForStars(s);
+
+        // No instance available: return 0 (no hardcoded values)
+        return 0;
+    }
+
+    public static double MapGpcPercentForStars(int s)
+    {
+        var inst = Instance;
+        if (inst != null)
+            return inst.GetGpcPercentForStars(s);
+
+        return 0.0;
+    }
+
+    public static double MapGpsPercentForStars(int s)
+    {
+        var inst = Instance;
+        if (inst != null)
+            return inst.GetGpsPercentForStars(s);
+
+        return MapGpcPercentForStars(s);
+    }
+
+    public static int MapCpmForStars(int s)
+    {
+        var inst = Instance;
+        if (inst != null)
+            return inst.GetCpmForStars(s);
+
+        return 0;
+    }
+
+    public static int MapClearCrystalForStars(int s)
+    {
+        var inst = Instance;
+        if (inst != null)
+            return inst.GetClearCrystalForStars(s);
+
+        return 0;
     }
 
     // Called externally (e.g. on click events) to add a star.

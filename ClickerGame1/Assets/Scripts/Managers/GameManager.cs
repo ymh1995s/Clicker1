@@ -127,23 +127,23 @@ public class GameManager : Singleton<GameManager>
                 case "A":
                 case "B":
                     // Sum start gold contributions from A and B characters
-                    _startGoldFromChars += GetStartGoldForStars(s);
+                    _startGoldFromChars += CharacterColloection.MapStartGoldForStars(s);
                     break;
                 case "C":
                 case "D":
-                    _characterGpcBonusPercent += GetGpcPercentForStars(s);
+                    _characterGpcBonusPercent += CharacterColloection.MapGpcPercentForStars(s);
                     break;
                 case "E":
                 case "F":
-                    _characterGpsBonusPercent += GetGpsPercentForStars(s);
+                    _characterGpsBonusPercent += CharacterColloection.MapGpsPercentForStars(s);
                     break;
                 case "G":
                 case "H":
-                    CPM += GetCpmForStars(s);
+                    CPM += CharacterColloection.MapCpmForStars(s);
                     break;
                 case "I":
                 case "J":
-                    _clearCrystalReward += GetClearCrystalForStars(s);
+                    _clearCrystalReward += CharacterColloection.MapClearCrystalForStars(s);
                     break;
             }
         }
@@ -156,63 +156,7 @@ public class GameManager : Singleton<GameManager>
         Debug.Log($"Character effects applied: StartGold={_startGoldFromChars}, GPC%={_characterGpcBonusPercent:P}, GPS%={_characterGpsBonusPercent:P}, CPM={CPM}, ClearCrystal={_clearCrystalReward}");
     }
 
-    private int GetStartGoldForStars(int s)
-    {
-        switch (s)
-        {
-            case 1: return 1000;
-            case 2: return 1200;
-            case 3: return 1500;
-            case 4: return 1700;
-            case 5: return 2000;
-            default: return 0;
-        }
-    }
-
-    private double GetGpcPercentForStars(int s)
-    {
-        switch (s)
-        {
-            case 1: return 0.10;
-            case 2: return 0.12;
-            case 3: return 0.15;
-            case 4: return 0.17;
-            case 5: return 0.20;
-            default: return 0.0;
-        }
-    }
-
-    private double GetGpsPercentForStars(int s)
-    {
-        // same mapping as GPC
-        return GetGpcPercentForStars(s);
-    }
-
-    private int GetCpmForStars(int s)
-    {
-        switch (s)
-        {
-            case 1: return 5;
-            case 2: return 6;
-            case 3: return 8;
-            case 4: return 9;
-            case 5: return 10;
-            default: return 0;
-        }
-    }
-
-    private int GetClearCrystalForStars(int s)
-    {
-        switch (s)
-        {
-            case 1: return 100;
-            case 2: return 120;
-            case 3: return 150;
-            case 4: return 170;
-            case 5: return 200;
-            default: return 0;
-        }
-    }
+    // Removed hardcoded per-star mapping methods; GameManager uses CharacterColloection.Map* helpers now.
 
     // GPC Upgrades and their levels
     [SerializeField] private Dictionary<EGPCUpgradeType, int> _gpcUpgrades = new Dictionary<EGPCUpgradeType, int>
@@ -781,8 +725,8 @@ public class GameManager : Singleton<GameManager>
             }
             catch { _gold = 0; }
 
-            // Restore preserved crystal and add 200 crystals
-            try { _crystal = preservedCrystal + 200; } catch { }
+            // Restore preserved crystal and add 2000 crystals
+            try { _crystal = preservedCrystal + 2000; } catch { }
 
             // Turn notifications back on and push a single set of events so UI updates once
             _suppressNotifications = false;

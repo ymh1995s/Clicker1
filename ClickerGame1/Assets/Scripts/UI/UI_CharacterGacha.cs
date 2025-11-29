@@ -5,7 +5,7 @@ using TMPro;
 using System.Collections;
 
 // UI_CharacterGacha: consume crystals to grant a star to a CharacterColloection frame.
-// - Requires 100 crystals per gacha. Does not use gold.
+// - Requires 1000 crystals per gacha. Does not use gold.
 public class UI_CharacterGacha : MonoBehaviour
 {
     [SerializeField] private Button gachaButton;
@@ -16,6 +16,8 @@ public class UI_CharacterGacha : MonoBehaviour
 
     private Coroutine _crystalCheckCoroutine;
     private Coroutine _ensureInitCoroutine;
+
+    const int CRYSTAL_COST = 1000;
 
     private void Awake()
     {
@@ -154,7 +156,6 @@ public class UI_CharacterGacha : MonoBehaviour
         }
 
         // Require crystals for gacha
-        const int CRYSTAL_COST = 100;
         if (GameManager.Instance.Crystal < CRYSTAL_COST)
         {
             Debug.Log($"UI_CharacterGacha: Not enough crystals. Need {CRYSTAL_COST}, have {GameManager.Instance.Crystal}.");
@@ -243,13 +244,12 @@ public class UI_CharacterGacha : MonoBehaviour
     private void RefreshNeedMoneyUI()
     {
         if (_needMoneyImage == null || GameManager.Instance == null) return;
-        bool hasEnoughCrystals = GameManager.Instance.Crystal >= 100;
+        bool hasEnoughCrystals = GameManager.Instance.Crystal >= CRYSTAL_COST;
         _needMoneyImage.SetActive(!hasEnoughCrystals);
         if (!hasEnoughCrystals && _needMoneyText != null)
         {
             // Prefer LocalizedText if present so formatting uses placeholders like ### or {0}
             var loc = _needMoneyText.GetComponent<LocalizedText>();
-            const int CRYSTAL_COST = 100;
             if (loc != null)
             {
                 loc.Key = "NEED_CRYSTAL";
@@ -292,7 +292,7 @@ public class UI_CharacterGacha : MonoBehaviour
             return;
         }
 
-        bool hasEnoughCrystals = GameManager.Instance.Crystal >= 100;
+        bool hasEnoughCrystals = GameManager.Instance.Crystal >= CRYSTAL_COST;
 
         var frames = GetAllFrames();
         bool anyEligible;

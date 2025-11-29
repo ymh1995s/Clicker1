@@ -2,8 +2,7 @@ using UnityEngine;
 
 public class UI_AdReward : MonoBehaviour
 {
-    [SerializeField]
-    int rewardAmount = 5;
+    const int rewardAmount = 50;
 
     public void OnClckButton()
     {

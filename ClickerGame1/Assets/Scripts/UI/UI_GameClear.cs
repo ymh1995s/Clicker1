@@ -189,21 +189,31 @@ public class UI_GameClear : UI_Base
             var anim = UnityEngine.Object.FindObjectOfType<UI_Animation>(true);
             if (anim != null)
             {
-                // Play the clip and when finished perform rebirth+fade sequence
-                anim.PlayGameClearImmediate(() =>
+                // Ensure the UI_Animation GameObject/component is active so it can start coroutines.
+                // If it was previously deactivated (e.g. after a previous clear), activate and defer call one frame
+                if (!anim.gameObject.activeInHierarchy || !anim.enabled)
                 {
-                    // Start coroutine to handle rebirth and canvas fade. Use Unity main thread context
-                    try
+                    try { anim.gameObject.SetActive(true); } catch { }
+                    try { anim.enabled = true; } catch { }
+
+                    // Defer invocation to next frame to allow Unity to run lifecycle methods
+                    StartCoroutine(InvokePlayGameClearNextFrame(anim));
+                }
+                else
+                {
+                    anim.PlayGameClearImmediate(() =>
                     {
-                        StartCoroutine(GameClearCompleteSequence());
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogWarning($"UI_GameClear: Failed to start completion sequence - {ex}");
-                        // Ensure inputs are unblocked in case of failure
-                        if (_inputBlocker != null) _inputBlocker.SetActive(false);
-                    }
-                });
+                        try
+                        {
+                            StartCoroutine(GameClearCompleteSequence());
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogWarning($"UI_GameClear: Failed to start completion sequence - {ex}");
+                            if (_inputBlocker != null) _inputBlocker.SetActive(false);
+                        }
+                    });
+                }
             }
             else
             {
@@ -215,6 +225,50 @@ public class UI_GameClear : UI_Base
         catch (Exception ex)
         {
             Debug.LogWarning($"UI_GameClear: Failed to play game-clear animation - {ex}");
+            if (_inputBlocker != null) _inputBlocker.SetActive(false);
+        }
+    }
+
+    // Helper to invoke PlayGameClearImmediate on the next frame after ensuring the component is active
+    private IEnumerator InvokePlayGameClearNextFrame(UI_Animation anim)
+    {
+        // wait one frame so Unity processes SetActive/OnEnable/Start
+        yield return null;
+
+        // Ensure still valid
+        if (anim == null)
+        {
+            if (_inputBlocker != null) _inputBlocker.SetActive(false);
+            yield break;
+        }
+
+        try
+        {
+            if (!anim.gameObject.activeInHierarchy)
+            {
+                try { anim.gameObject.SetActive(true); } catch { }
+            }
+            if (!anim.enabled)
+            {
+                try { anim.enabled = true; } catch { }
+            }
+
+            anim.PlayGameClearImmediate(() =>
+            {
+                try
+                {
+                    StartCoroutine(GameClearCompleteSequence());
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"UI_GameClear: Failed to start completion sequence - {ex}");
+                    if (_inputBlocker != null) _inputBlocker.SetActive(false);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"UI_GameClear: Deferred PlayGameClearImmediate failed - {ex}");
             if (_inputBlocker != null) _inputBlocker.SetActive(false);
         }
     }

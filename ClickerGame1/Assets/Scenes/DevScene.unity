@@ -3969,7 +3969,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3999363679376778704, guid: 829231af557805d49b6f595b33e36168, type: 3}
       propertyPath: m_Name
-      value: CrystalBuy1000
+      value: CrystalBuy10000
+      objectReference: {fileID: 0}
+    - target: {fileID: 4197715605099691045, guid: 829231af557805d49b6f595b33e36168, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 90.500015
+      objectReference: {fileID: 0}
+    - target: {fileID: 4384008398027467663, guid: 829231af557805d49b6f595b33e36168, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: -92
       objectReference: {fileID: 0}
     - target: {fileID: 7993400094340303255, guid: 829231af557805d49b6f595b33e36168, type: 3}
       propertyPath: m_text
@@ -3977,7 +3985,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8258986696104456006, guid: 829231af557805d49b6f595b33e36168, type: 3}
       propertyPath: m_text
-      value: + 1000
+      value: + 10000
       objectReference: {fileID: 0}
     - target: {fileID: 9007338826703617618, guid: 829231af557805d49b6f595b33e36168, type: 3}
       propertyPath: m_text
@@ -5256,6 +5264,10 @@ PrefabInstance:
     - target: {fileID: 81824600910355884, guid: 9a92c140cd9b6af4398f913fbf5bb815, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6554159228817807093, guid: 9a92c140cd9b6af4398f913fbf5bb815, type: 3}
+      propertyPath: m_text
+      value: + 50
       objectReference: {fileID: 0}
     - target: {fileID: 6944442371023463437, guid: 9a92c140cd9b6af4398f913fbf5bb815, type: 3}
       propertyPath: m_Name
@@ -10271,8 +10283,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63bc4d7f3e51458ca412e17f6bac76c7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Samples.Purchasing.Legacy.Core.BuyingConsumables.PurchaseManager
-  crystal200ProductId: com.mycompany.mygame.crystal200
-  crystal1000ProductId: com.mycompany.mygame.crystal1000
+  crystal2000ProductId: com.overture.asl.crystal2000
+  crystal10000ProductId: com.overture.asl.crystal10000
 --- !u!4 &1850276646
 Transform:
   m_ObjectHideFlags: 0
@@ -10783,6 +10795,10 @@ PrefabInstance:
     - target: {fileID: 81824600910355884, guid: 9a92c140cd9b6af4398f913fbf5bb815, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6554159228817807093, guid: 9a92c140cd9b6af4398f913fbf5bb815, type: 3}
+      propertyPath: m_text
+      value: + 50
       objectReference: {fileID: 0}
     - target: {fileID: 6944442371023463437, guid: 9a92c140cd9b6af4398f913fbf5bb815, type: 3}
       propertyPath: m_Name
@@ -12240,7 +12256,31 @@ PrefabInstance:
       objectReference: {fileID: 1850276645}
     - target: {fileID: 3999363679376778704, guid: 829231af557805d49b6f595b33e36168, type: 3}
       propertyPath: m_Name
-      value: CrystalBuy200
+      value: CrystalBuy2000
+      objectReference: {fileID: 0}
+    - target: {fileID: 4197715605099691045, guid: 829231af557805d49b6f595b33e36168, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 98.500015
+      objectReference: {fileID: 0}
+    - target: {fileID: 4197715605099691045, guid: 829231af557805d49b6f595b33e36168, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -0.000011955
+      objectReference: {fileID: 0}
+    - target: {fileID: 4384008398027467663, guid: 829231af557805d49b6f595b33e36168, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: -84
+      objectReference: {fileID: 0}
+    - target: {fileID: 4384008398027467663, guid: 829231af557805d49b6f595b33e36168, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7993400094340303255, guid: 829231af557805d49b6f595b33e36168, type: 3}
+      propertyPath: m_text
+      value: "1,000\uC6D0"
+      objectReference: {fileID: 0}
+    - target: {fileID: 8258986696104456006, guid: 829231af557805d49b6f595b33e36168, type: 3}
+      propertyPath: m_text
+      value: + 2000
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -12431,6 +12471,10 @@ PrefabInstance:
     - target: {fileID: 81824600910355884, guid: 9a92c140cd9b6af4398f913fbf5bb815, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6554159228817807093, guid: 9a92c140cd9b6af4398f913fbf5bb815, type: 3}
+      propertyPath: m_text
+      value: + 50
       objectReference: {fileID: 0}
     - target: {fileID: 6944442371023463437, guid: 9a92c140cd9b6af4398f913fbf5bb815, type: 3}
       propertyPath: m_Name

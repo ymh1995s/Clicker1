@@ -12,8 +12,8 @@ namespace Samples.Purchasing.Legacy.Core.BuyingConsumables
         StoreController m_StoreController; // The Unity Purchasing system.
 
         //Your products IDs. They should match the ids of your products in your store.
-        public string crystal200ProductId = "com.mycompany.mygame.crystal200";
-        public string crystal1000ProductId = "com.mycompany.mygame.crystal1000";
+        public string crystal2000ProductId = "com.overture.asl.crystal2000";
+        public string crystal10000ProductId = "com.overture.asl.crystal10000";
 
         int m_GoldCount;
         int m_DiamondCount;
@@ -44,8 +44,8 @@ namespace Samples.Purchasing.Legacy.Core.BuyingConsumables
         {
             var initialProductsToFetch = new List<ProductDefinition>
             {
-                new(crystal200ProductId, ProductType.Consumable),
-                new(crystal1000ProductId, ProductType.Consumable)
+                new(crystal2000ProductId, ProductType.Consumable),
+                new(crystal10000ProductId, ProductType.Consumable)
             };
 
             m_StoreController.FetchProducts(initialProductsToFetch);
@@ -53,12 +53,12 @@ namespace Samples.Purchasing.Legacy.Core.BuyingConsumables
 
         public void OnClick200Crystal()
         {
-            m_StoreController.PurchaseProduct(crystal200ProductId);
+            m_StoreController.PurchaseProduct(crystal2000ProductId);
         }
 
         public void OnClick1000Crystal()
         {
-            m_StoreController.PurchaseProduct(crystal1000ProductId);
+            m_StoreController.PurchaseProduct(crystal10000ProductId);
         }
 
         void OnPurchaseFailed(FailedOrder order)
@@ -84,13 +84,13 @@ namespace Samples.Purchasing.Legacy.Core.BuyingConsumables
             }
 
             //Add the purchased product to the players inventory
-            if (product.definition.id == crystal200ProductId)
+            if (product.definition.id == crystal2000ProductId)
             {
-                Add200Crystal();
+                Add2000Crystal();
             }
-            else if (product.definition.id == crystal1000ProductId)
+            else if (product.definition.id == crystal10000ProductId)
             {
-                Add1000Crystal();
+                Add10000Crystal();
             }
 
             Debug.Log($"Purchase complete - Product: {product.definition.id}");
@@ -160,18 +160,18 @@ namespace Samples.Purchasing.Legacy.Core.BuyingConsumables
             Debug.Log($"Products fetch failed for {failure.FailedFetchProducts.Count} products: {failure.FailureReason}");
         }
 
-        void Add200Crystal()
+        void Add2000Crystal()
         {
-            GameManager.Instance.Crystal += 200;
+            GameManager.Instance.Crystal += 2000;
             SaveManager.Instance?.Save();
-            Debug.Log("PurchaseManager: Added 200 crystals.");
+            Debug.Log("PurchaseManager: Added 2000 crystals.");
         }
 
-        void Add1000Crystal()
+        void Add10000Crystal()
         {
-            GameManager.Instance.Crystal += 1000;
+            GameManager.Instance.Crystal += 10000;
             SaveManager.Instance?.Save();
-            Debug.Log("PurchaseManager: Added 1000 crystals.");
+            Debug.Log("PurchaseManager: Added 10000 crystals.");
         }
     }
 }

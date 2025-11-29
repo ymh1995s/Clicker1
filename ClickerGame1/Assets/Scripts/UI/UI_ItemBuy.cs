@@ -207,6 +207,19 @@ public class UI_ItemBuy : UI_Base
             return;
         }
 
+        // Ensure UI_Animation is active so it receives the OnPurchasedChanged event from GameManager
+        try
+        {
+            var anim = UnityEngine.Object.FindObjectOfType<UI_Animation>(true);
+            if (anim != null)
+            {
+                // Activate and enable before notifying GameManager so OnPurchasedChanged is received
+                try { anim.gameObject.SetActive(true); } catch { }
+                try { anim.enabled = true; } catch { }
+            }
+        }
+        catch { }
+
         // To avoid UI flicker where OnGoldChanged triggers subscribers before GPC/GPS
         // recalculation can occur, update purchase state and recalculate first, then
         // deduct gold so listeners receive the recalculated GPC/GPS together with the

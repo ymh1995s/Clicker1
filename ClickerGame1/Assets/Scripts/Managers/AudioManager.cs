@@ -21,7 +21,7 @@ public class AudioManager : MonoBehaviour
     private AudioSource _sfxSource;
 
     // Target volumes (master settings)
-    private float _bgmVolume = 0.3f; // default bgm level
+    private float _bgmVolume = 0.35f; // default bgm level
     private float _sfxVolume = 0.2f; // default sfx level (user requested click SFX 0.2)
 
     private void Awake()
